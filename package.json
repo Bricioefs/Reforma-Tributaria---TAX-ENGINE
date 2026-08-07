@@ -4,14 +4,14 @@
   "description": "Motor tributário IBS/CBS/IS baseado na LC 214/2025 (EC 132/2023) - Fase 1",
   "bin": "dist/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-assets.js",
-    "start": "node dist/main.js",
-    "start:dev": "ts-node-dev --respawn src/main.ts",
-    "test": "jest",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "build:exe": "npm run build && pkg . --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --output dist-exe/tax-engine"
-  },
+  "build": "tsc -p tsconfig.json",
+  "start": "node dist/main.js",
+  "start:dev": "ts-node-dev --respawn src/main.ts",
+  "test": "jest",
+  "prisma:generate": "prisma generate",
+  "prisma:migrate": "prisma migrate dev",
+  "build:exe": "npm run build && pkg . --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --output dist-exe/tax-engine"
+},
   "pkg": {
     "assets": [
       "dist/public/**",
