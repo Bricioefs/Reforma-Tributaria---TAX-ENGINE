@@ -29,3 +29,7 @@ jobs:
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test
+    
+git rm .github/workflows/npm-publish-github-packages.yml
+git commit -m "Remove workflow de publicação npm (não se aplica a este projeto)"
+git push
