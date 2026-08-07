@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tax Engine IBS/CBS/IS</title>
+<style>
+  :root {
+    --azul: #1a4d8f;
+    --azul-escuro: #0d2c52;
+    --cinza-claro: #f4f6f9;
+    --cinza-borda: #d7dee6;
+    --verde: #1e7e34;
+    --vermelho: #b02a37;
+    --texto: #1f2937;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    margin: 0;
+    background: var(--cinza-claro);
+    color: var(--texto);
+  }
+  header {
+    background: var(--azul-escuro);
+    color: white;
+    padding: 18px 24px;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+
+  nav {
+    display: flex;
+    background: var(--azul);
+    flex-wrap: wrap;
+  }
+  nav button {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 12px 18px;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.8;
+  }
+  nav button.ativo { opacity: 1; background: var(--azul-escuro); font-weight: 600; }
+  nav button:hover { opacity: 1; }
+
+  main { max-width: 980px; margin: 0 auto; padding: 20px; }
+  section.painel { display: none; }
+  section.painel.ativo { display: block; }
+
+  .cartao {
+    background: white;
+    border: 1px solid var(--cinza-borda);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+  }
+  .cartao h2 { margin-top: 0; font-size: 16px; color: var(--azul-escuro); }
+  .cartao h3 { font-size: 14px; color: var(--azul); margin: 18px 0 8px; }
+
+  .grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #4b5563; }
+  input, select, textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--cinza-borda);
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  textarea { min-height: 90px; font-family: monospace; }
+  .campo { margin-bottom: 10px; }
+  .checkbox-linha { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .checkbox-linha input { width: auto; }
+  .checkbox-linha label { margin: 0; }
+
+  details { margin-top: 14px; border-top: 1px dashed var(--cinza-borda); padding-top: 10px; }
+  summary { cursor: pointer; font-weight: 600; color: var(--azul); font-size: 13px; }
+
+  button.acao {
+    background: var(--azul);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 12px;
+    margin-right: 8px;
+  }
+  button.acao:hover { background: var(--azul-escuro); }
+  button.secundario { background: white; color: var(--azul); border: 1px solid var(--azul); }
+  button.secundario:hover { background: var(--cinza-claro); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+  th, td { border: 1px solid var(--cinza-borda); padding: 7px 9px; text-align: left; }
+  th { background: var(--cinza-claro); }
+  .valor-zero { color: #6b7280; }
+  .beneficio-tag {
+    display: inline-block; background: #e5f0ff; color: var(--azul-escuro);
+    padding: 1px 7px; border-radius: 10px; font-size: 11px; margin: 1px;
+  }
+
+  .erro { background: #fdecea; border: 1px solid var(--vermelho); color: var(--vermelho); padding: 10px 14px; border-radius: 6px; margin-top: 12px; font-size: 13px; }
+  .sucesso { background: #eaf7ec; border: 1px solid var(--verde); color: var(--verde); padding: 10px 14px; border-radius: 6px; margin-top: 12px; font-size: 13px; }
+
+  .barra-linha { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
+  .barra-fundo { flex: 1; background: var(--cinza-claro); border-radius: 4px; overflow: hidden; height: 18px; }
+  .barra-preenchida { background: var(--azul); height: 100%; }
+  .barra-label { width: 220px; word-break: break-word; }
+  .barra-valor { width: 90px; text-align: right; }
+  .kpi-cartao { border: 1px solid #f3c4c4; border-radius: 8px; padding: 12px 14px; flex: 1; min-width: 160px; }
+  .kpi-titulo { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+  .kpi-valor { font-size: 21px; font-weight: 700; }
+  .kpi-variacao { font-size: 11px; margin-top: 2px; }
+  .situacao-banner { border: 1px solid #f3c4c4; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-weight: 600; }
+  .mini-barra-grupo { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+  .mini-barra-label { width: 50px; font-weight: 600; }
+  .mini-barra-pilha { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .mini-barra-fundo { background: var(--cinza-claro); border-radius: 3px; overflow: hidden; height: 12px; display: flex; align-items: center; }
+  .mini-barra-preenchida { height: 100%; border-radius: 3px; }
+
+  .memoria-item { border: 1px solid var(--cinza-borda); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; font-size: 12px; }
+  .memoria-item .titulo { font-weight: 700; color: var(--azul-escuro); }
+  pre.json { background: #0d2c52; color: #cfe3ff; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 11px; }
+
+  footer { text-align: center; font-size: 12px; color: #6b7280; padding: 20px; }
+</style>
+</head>
+<body>
+
+<!-- ===================== TELA DE ATIVAÇÃO ===================== -->
+<div id="tela-ativacao" style="display:none; position:fixed; inset:0; background:var(--cinza-claro); z-index:1000; align-items:center; justify-content:center; padding:20px;">
+  <div class="cartao" style="max-width:480px; width:100%;">
+    <h2>Ativação do Tax Engine IBS/CBS/IS</h2>
+    <p id="ativacao-mensagem-motivo" style="font-size:13px;color:#6b7280"></p>
+    <p style="font-size:13px;color:#6b7280">
+      Digite a chave de ativação que você recebeu (formato AAAAA-BBBBB-CCCCC-DDDDD). A chave fica
+      vinculada a este computador — não pode ser usada em outra máquina depois de ativada aqui.
+    </p>
+    <form id="form-ativacao">
+      <div class="campo">
+        <label>Chave de ativação</label>
+        <input id="ativacao-chave" name="chave" placeholder="AAAAA-BBBBB-CCCCC-DDDDD" maxlength="23" style="text-transform:uppercase; letter-spacing:1px; font-family:monospace" required />
+      </div>
+      <button type="submit" class="acao">Ativar</button>
+    </form>
+    <div id="ativacao-resultado" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ===================== TELA DE LOGIN / CADASTRO ===================== -->
+<div id="tela-login" style="display:none; position:fixed; inset:0; background:var(--cinza-claro); z-index:1000; align-items:center; justify-content:center; padding:20px;">
+  <div class="cartao" style="max-width:420px; width:100%;">
+    <h2 id="login-titulo">Entrar</h2>
+    <p id="login-subtitulo" style="font-size:13px;color:#6b7280">Sistema ativado — informe seu usuário e senha para continuar.</p>
+    <form id="form-login">
+      <div class="campo">
+        <label>Usuário</label>
+        <input id="login-usuario" name="usuario" required autocomplete="username" />
+      </div>
+      <div class="campo">
+        <label>Senha</label>
+        <input id="login-senha" name="senha" type="password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="acao" id="btn-login-submit">Entrar</button>
+    </form>
+    <div id="login-resultado" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="app-conteudo" style="display:none">
+<header>
+  <h1>Tax Engine IBS/CBS/IS</h1>
+  <p>Motor tributário — EC 132/2023 e LC 214/2025 · Interface de preenchimento</p>
+</header>
+
+<div id="banner-atualizacao" style="display:none; background:#fff7e6; border-bottom:2px solid #f0ad4e; padding:10px 20px; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+  <span id="banner-atualizacao-texto"></span>
+  <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+    <a id="banner-atualizacao-link" href="#" target="_blank" class="acao" style="padding:4px 10px; font-size:12px;">Baixar atualização</a>
+    <button type="button" id="banner-atualizacao-fechar" class="acao secundario" style="padding:4px 10px; font-size:12px;">Fechar</button>
+  </div>
+</div>
+
+<nav id="menu">
+  <button data-painel="calculo" class="ativo">Calcular Operação</button>
+  <button data-painel="beneficios">Consultar Benefícios</button>
+  <button data-painel="apuracao">Apuração Anual</button>
+  <button data-painel="historico">Histórico</button>
+  <button data-painel="dashboard">Dashboard</button>
+</nav>
+
+<main>
+
+  <!-- ===================== CALCULAR OPERAÇÃO ===================== -->
+  <section id="painel-calculo" class="painel ativo">
+
+    <div class="cartao" id="cartao-empresa">
+      <h2>Dados da empresa</h2>
+      <div class="grade">
+        <div class="campo" style="grid-column: span 2">
+          <label>CNPJ</label>
+          <div style="display:flex; gap:8px">
+            <input id="input-cnpj" placeholder="00.000.000/0000-00" />
+            <button type="button" class="acao" id="btn-buscar-cnpj" style="white-space:nowrap; margin:0">Buscar</button>
+          </div>
+        </div>
+      </div>
+      <div id="dados-empresa-encontrada"></div>
+      <p style="font-size:12px;color:#6b7280;margin-top:10px">
+        A busca usa a base pública da Receita Federal (BrasilAPI) e preenche automaticamente
+        UF, município, CNAE e opção pelo Simples Nacional nos lançamentos desta sessão. Requer internet.
+      </p>
+    </div>
+
+    <div class="cartao">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+        <h2 id="titulo-lancamentos" style="margin:0">Lançamentos salvos — sem empresa vinculada</h2>
+        <button type="button" class="acao secundario" id="btn-toggle-lancamentos" style="margin:0; white-space:nowrap">Esconder lançamentos</button>
+      </div>
+      <p style="font-size:13px;color:#6b7280">
+        Cada cálculo — feito manualmente aqui ou importado por planilha na aba "Importar Planilha" —
+        é adicionado a esta lista como um lançamento, com IBS Estadual/Municipal e CBS sempre
+        individualizados, e fica salvo em disco por empresa (não se perde ao trocar de aba, fechar
+        o programa, ou importar uma nova planilha — cada importação soma a esta mesma lista, sem
+        substituir a anterior). Busque um CNPJ acima para ver e continuar os lançamentos daquela
+        empresa, ou lance sem empresa vinculada. A apuração anual abaixo é alimentada
+        automaticamente a cada lançamento.
+      </p>
+      <div id="tabela-lancamentos"><p style="font-size:13px;color:#6b7280">Nenhum lançamento salvo ainda.</p></div>
+      <button type="button" class="acao secundario" id="btn-limpar-lancamentos">Limpar lançamentos desta empresa</button>
+    </div>
+
+    <div class="cartao">
+      <h2 id="titulo-apuracao-tempo-real">Apuração automática — ano atual</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Atualizada sozinha a cada lançamento desta competência, sem precisar apertar nenhum botão.
+        Use a aba "Apuração Anual" para ver outros anos, editar créditos, ou fechar o período.
+      </p>
+      <div id="resumo-apuracao-tempo-real"><p style="font-size:13px;color:#6b7280">Sem lançamentos nesta competência ainda.</p></div>
+    </div>
+
+    <div class="cartao">
+      <h2>Importar planilha (Entrada/Saída)</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Importa um Excel de entrada (compras) ou saída (vendas) — colunas esperadas: Descrição, NCM/NBS, CFOP,
+        Total Produto (ou Valor Contábil). Cada linha vira um lançamento automaticamente, com IBS/CBS calculado
+        pelo motor completo (mesmos benefícios do cálculo manual) e já somado à apuração desta competência.
+      </p>
+      <form id="form-importacao">
+        <div class="grade">
+          <div class="campo">
+            <label>Arquivo (.xls ou .xlsx)</label>
+            <input type="file" name="arquivo" id="importacao-arquivo" accept=".xls,.xlsx" required />
+          </div>
+          <div class="campo">
+            <label>Tipo</label>
+            <select name="tipoLote" id="importacao-tipo">
+              <option value="ENTRADA">Entrada (compras — vira crédito)</option>
+              <option value="SAIDA">Saída (vendas — vira débito)</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Data de referência (aplicada a todas as linhas)</label>
+            <input type="date" name="dataOperacao" id="importacao-data" required />
+          </div>
+          <div class="campo">
+            <label>CFOP padrão (se alguma linha não tiver CFOP próprio)</label>
+            <input name="cfopPadrao" id="importacao-cfop-padrao" placeholder="opcional" />
+          </div>
+          <div class="campo">
+            <label>Alíquota ISS (%) — calculada só para CFOP 5933/6933</label>
+            <input name="aliquotaIss" id="importacao-aliquota-iss" type="number" step="0.01" placeholder="opcional, ex: 5" />
+          </div>
+          <div class="campo">
+            <label>Consultar automaticamente na Receita Federal se cada fornecedor/cliente é do Simples Nacional?</label>
+            <select name="consultarSimplesNacional" id="importacao-consultar-simples-nacional">
+              <option value="">Não</option>
+              <option value="true">Sim (uma consulta por CNPJ único — pode levar alguns segundos a mais)</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Reserva: se não consultar (ou a consulta falhar), toda a contraparte desta planilha é optante do Simples Nacional?</label>
+            <select name="contraparteSimplesNacional" id="importacao-simples-nacional">
+              <option value="">Não</option>
+              <option value="true">Sim</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="acao">Importar planilha</button>
+      </form>
+      <div id="progresso-importacao" style="display:none; margin-top:10px">
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#6b7280; margin-bottom:4px">
+          <span id="progresso-importacao-texto">Preparando…</span>
+          <span id="progresso-importacao-percentual">0%</span>
+        </div>
+        <div class="barra-fundo"><div class="barra-preenchida" id="progresso-importacao-barra" style="width:0%;background:#1a4d8f"></div></div>
+      </div>
+      <div id="resultado-importacao"></div>
+    </div>
+
+    <div class="cartao">
+      <h2>Novo lançamento</h2>
+      <form id="form-calculo">
+        <div class="grade">
+          <div class="campo">
+            <label>Nº da operação (identificador)</label>
+            <input name="operacaoId" required placeholder="ex: nfe-00123" />
+          </div>
+          <div class="campo">
+            <label>Ano da operação</label>
+            <select name="anoOperacao" required>
+              <option value="2026">2026 (ano-teste)</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
+              <option value="2031">2031</option>
+              <option value="2032">2032</option>
+              <option value="2033">2033 (alíquota plena)</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Tipo de operação</label>
+            <select name="tipo">
+              <option value="VENDA">Venda</option>
+              <option value="COMPRA">Compra (entrada — gera crédito)</option>
+              <option value="REMESSA">Remessa</option>
+              <option value="RETORNO">Retorno</option>
+              <option value="BONIFICACAO">Bonificação</option>
+              <option value="DEVOLUCAO">Devolução</option>
+              <option value="IMPORTACAO">Importação (entrada — gera crédito)</option>
+              <option value="EXPORTACAO">Exportação</option>
+              <option value="CONSIGNACAO">Consignação</option>
+              <option value="INDUSTRIALIZACAO_ENCOMENDA">Industrialização por encomenda</option>
+              <option value="DEMONSTRACAO">Demonstração</option>
+              <option value="AMOSTRA_GRATIS">Amostra grátis</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Âmbito</label>
+            <select name="ambito">
+              <option value="INTERNA">Interna</option>
+              <option value="INTERESTADUAL">Interestadual</option>
+              <option value="INTERNACIONAL">Internacional</option>
+            </select>
+          </div>
+        </div>
+
+        <h3>Classificação fiscal</h3>
+        <div class="grade">
+          <div class="campo"><label>NCM</label><input name="ncm" placeholder="0000.00.00" /></div>
+          <div class="campo"><label>NBS</label><input name="nbs" placeholder="0.0000.00.00" /></div>
+          <div class="campo"><label>CEST</label><input name="cest" /></div>
+          <div class="campo"><label>CFOP</label><input name="cfop" value="5102" required /></div>
+          <div class="campo"><label>CST</label><input name="cst" value="000" required /></div>
+          <div class="campo"><label>CNAE</label><input name="cnae" placeholder="0000-0/00" /></div>
+        </div>
+
+        <h3>Valores</h3>
+        <div class="grade">
+          <div class="campo"><label>Valor bruto (R$)</label><input name="valorBruto" type="number" step="0.01" required /></div>
+          <div class="campo"><label>Frete (R$)</label><input name="frete" type="number" step="0.01" /></div>
+          <div class="campo"><label>Seguro (R$)</label><input name="seguro" type="number" step="0.01" /></div>
+          <div class="campo"><label>Despesas acessórias (R$)</label><input name="despesasAcessorias" type="number" step="0.01" /></div>
+          <div class="campo"><label>Desconto incondicional (R$)</label><input name="descontoIncondicional" type="number" step="0.01" /></div>
+        </div>
+
+        <h3>Tributos do sistema atual (opcional)</h3>
+        <p style="font-size:13px;color:#6b7280;margin-top:-6px">
+          Informe o valor JÁ APURADO de cada tributo no sistema atual (tal como sai da sua nota/apuração hoje) — o
+          sistema aplica o cronograma de extinção/redução da reforma para projetar quanto ainda seria devido de
+          cada um em cada ano até 2033, somado ao IBS/CBS. Deixe em branco o que não quiser acompanhar.
+        </p>
+        <div class="grade">
+          <div class="campo"><label>PIS (R$)</label><input name="valorPis" type="number" step="0.01" /></div>
+          <div class="campo"><label>COFINS (R$)</label><input name="valorCofins" type="number" step="0.01" /></div>
+          <div class="campo"><label>ICMS (R$)</label><input name="valorIcms" type="number" step="0.01" /></div>
+          <div class="campo"><label>ISS (R$)</label><input name="valorIss" type="number" step="0.01" /></div>
+          <div class="campo"><label>IPI (R$)</label><input name="valorIpi" type="number" step="0.01" /></div>
+        </div>
+
+        <details>
+          <summary>Opções avançadas — regimes diferenciados e operações especiais</summary>
+
+          <h3>Localização</h3>
+          <div class="grade">
+            <div class="campo"><label>UF origem</label><input name="ufOrigem" maxlength="2" /></div>
+            <div class="campo"><label>UF destino</label><input name="ufDestino" maxlength="2" /></div>
+            <div class="campo"><label>Município origem (IBGE)</label><input name="municipioOrigemIbge" /></div>
+            <div class="campo"><label>Município destino (IBGE)</label><input name="municipioDestinoIbge" /></div>
+            <div class="campo"><label>Destinação</label>
+              <select name="destinacao">
+                <option value="">—</option>
+                <option value="CONSUMO">Consumo</option>
+                <option value="REVENDA">Revenda</option>
+                <option value="ATIVO_IMOBILIZADO">Ativo imobilizado</option>
+                <option value="USO_CONSUMO">Uso e consumo</option>
+              </select>
+            </div>
+          </div>
+
+          <h3>Situação do contribuinte / regime</h3>
+          <div class="grade">
+            <div class="campo"><label>Faturamento anual do produtor rural (R$)</label><input name="faturamentoAnualProdutorRural" type="number" step="0.01" /></div>
+            <div class="campo"><label>Destinatário é administração pública?</label>
+              <select name="destinatarioAdministracaoPublica"><option value="">Não</option><option value="true">Sim</option></select>
+            </div>
+            <div class="campo"><label>Operação com ZFM / Área de Livre Comércio?</label>
+              <select name="operacaoZfmOuAlc"><option value="">Não</option><option value="true">Sim</option></select>
+            </div>
+            <div class="campo"><label>Ato cooperativo interno?</label>
+              <select name="atoCooperativoInterno"><option value="">Não</option><option value="true">Sim</option></select>
+            </div>
+            <div class="campo"><label>Fornecedor optante do Simples Nacional?</label>
+              <select name="optanteSimplesNacional"><option value="">Não</option><option value="true">Sim</option></select>
+            </div>
+            <div class="campo"><label>Regime escolhido no Simples</label>
+              <select name="regimeSimplesEscolhido">
+                <option value="">—</option>
+                <option value="RECOLHIMENTO_UNIFICADO">Recolhimento unificado (DAS)</option>
+                <option value="HIBRIDO_REGULAR">Híbrido regular (destaca IBS/CBS)</option>
+              </select>
+            </div>
+          </div>
+
+          <h3>Combustíveis</h3>
+          <div class="grade">
+            <div class="campo"><label>Etapa da cadeia</label>
+              <select name="etapaCadeiaCombustivel">
+                <option value="">—</option>
+                <option value="PRODUTOR_IMPORTADOR">Produtor / Importador</option>
+                <option value="DISTRIBUIDOR">Distribuidor</option>
+                <option value="REVENDA_VAREJO">Revenda / Varejo</option>
+              </select>
+            </div>
+          </div>
+
+          <h3>Marketplace e operação triangular</h3>
+          <div class="grade">
+            <div class="campo"><label>Via marketplace?</label>
+              <select name="viaMarketplace"><option value="">Não</option><option value="true">Sim</option></select>
+            </div>
+            <div class="campo"><label>CNPJ do marketplace responsável</label><input name="marketplaceCnpjResponsavel" /></div>
+            <div class="campo"><label>Operação triangular?</label>
+              <select name="operacaoTriangular"><option value="">Não</option><option value="true">Sim</option></select>
+            </div>
+            <div class="campo"><label>Remetente físico (se diferente do vendedor)</label><input name="remetenteFisicoDiferenteDoVendedor" /></div>
+          </div>
+
+          <h3>Importação</h3>
+          <div class="grade">
+            <div class="campo"><label>Valor aduaneiro (R$)</label><input name="valorAduaneiro" type="number" step="0.01" /></div>
+            <div class="campo"><label>Imposto de Importação (R$)</label><input name="impostoImportacao" type="number" step="0.01" /></div>
+            <div class="campo"><label>Despesas de desembaraço (R$)</label><input name="despesasDesembaracoAduaneiro" type="number" step="0.01" /></div>
+          </div>
+
+          <h3>Industrialização por encomenda</h3>
+          <div class="grade">
+            <div class="campo"><label>Valor agregado pelo industrializador (R$)</label><input name="valorAgregadoIndustrializacao" type="number" step="0.01" /></div>
+          </div>
+        </details>
+
+        <button type="submit" class="acao">Calcular e adicionar lançamento</button>
+        <button type="button" class="acao secundario" id="btn-simular">Apenas simular (não adiciona à lista)</button>
+      </form>
+    </div>
+
+    <div id="resultado-calculo"></div>
+  </section>
+
+  <!-- ===================== BENEFÍCIOS ===================== -->
+  <section id="painel-beneficios" class="painel">
+    <div class="cartao">
+      <h2>Consultar benefícios aplicáveis</h2>
+      <form id="form-beneficios">
+        <div class="grade">
+          <div class="campo"><label>NCM</label><input name="ncm" /></div>
+          <div class="campo"><label>NBS</label><input name="nbs" /></div>
+          <div class="campo"><label>CEST</label><input name="cest" /></div>
+          <div class="campo"><label>CFOP</label><input name="cfop" value="5102" /></div>
+          <div class="campo"><label>CNAE</label><input name="cnae" /></div>
+          <div class="campo"><label>Tipo de operação</label>
+            <select name="tipo">
+              <option value="VENDA">Venda</option>
+              <option value="COMPRA">Compra (entrada — gera crédito)</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="acao">Consultar</button>
+      </form>
+    </div>
+    <div id="resultado-beneficios"></div>
+
+    <div class="cartao">
+      <h2>Consultar em lote (planilha Excel)</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Envie uma planilha com uma coluna "NCM/NBS" (e opcionalmente "Descrição") para consultar vários
+        códigos de uma vez — útil para conferir o cadastro de produtos inteiro antes de lançar operações.
+      </p>
+      <form id="form-beneficios-planilha">
+        <div class="grade">
+          <div class="campo">
+            <label>Arquivo (.xls ou .xlsx)</label>
+            <input type="file" name="arquivo" id="beneficios-planilha-arquivo" accept=".xls,.xlsx" required />
+          </div>
+          <div class="campo"><label>CFOP (opcional)</label><input id="beneficios-planilha-cfop" placeholder="5102" /></div>
+          <div class="campo"><label>Tipo de operação</label>
+            <select id="beneficios-planilha-tipo">
+              <option value="VENDA">Venda</option>
+              <option value="COMPRA">Compra</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="acao">Consultar planilha</button>
+      </form>
+      <div id="resultado-beneficios-planilha"></div>
+    </div>
+  </section>
+
+  <!-- ===================== APURAÇÃO ===================== -->
+  <section id="painel-apuracao" class="painel">
+    <div class="cartao">
+      <h2>Apuração anual</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Preenchida automaticamente conforme você lança operações na aba "Calcular Operação" — lançamentos de
+        Venda/Exportação/etc. entram como débito, e lançamentos de Compra/Importação entram como crédito
+        (abatendo do débito do período). Os botões abaixo servem para conferir outra competência ou editar
+        manualmente antes de apurar.
+      </p>
+      <form id="form-apuracao">
+        <div class="grade">
+          <div class="campo"><label>Estabelecimento</label><input name="estabelecimentoId" required /></div>
+          <div class="campo"><label>Ano</label><input name="competencia" placeholder="2026" required /></div>
+          <div class="campo"><label>Saldo credor transportado anterior (R$)</label><input name="saldoCredorTransportadoAnterior" type="number" step="0.01" /></div>
+        </div>
+        <div class="campo">
+          <label>Débitos (JSON)</label>
+          <textarea name="debitos" id="apuracao-debitos">[]</textarea>
+        </div>
+        <div class="campo">
+          <label>Créditos (JSON)</label>
+          <textarea name="creditos" id="apuracao-creditos">[]</textarea>
+        </div>
+        <button type="button" class="acao secundario" id="btn-usar-ultimo">Usar lançamentos desta sessão</button>
+        <button type="button" class="acao secundario" id="btn-apurar-automatico">Apurar automaticamente (sem colar JSON)</button>
+        <button type="submit" class="acao">Apurar período</button>
+        <button type="button" class="acao secundario" id="btn-fechar">Fechar período</button>
+      </form>
+    </div>
+    <div id="resultado-apuracao"></div>
+
+    <div class="cartao">
+      <h2>Alíquotas de referência (IBS/CBS)</h2>
+      <p style="font-size:13px;color:#6b7280">
+        A LC 214/2025 ainda não fixa a alíquota de referência definitiva (depende de cálculo do TCU/Resolução
+        do Senado) — o sistema usa CBS 10% + IBS 18% (28% total) como padrão. Altere aqui para testar outro
+        cenário: o cálculo de novas operações, a apuração e a projeção passam a usar o novo valor imediatamente,
+        sem precisar reiniciar o programa. Lançamentos já salvos mantêm o valor calculado na época.
+      </p>
+      <div class="grade">
+        <div class="campo"><label>CBS plena (%)</label><input id="config-aliquota-cbs" type="number" step="0.01" /></div>
+        <div class="campo"><label>IBS pleno (%)</label><input id="config-aliquota-ibs" type="number" step="0.01" /></div>
+      </div>
+      <button type="button" class="acao" id="btn-salvar-aliquotas">Salvar</button>
+      <button type="button" class="acao secundario" id="btn-restaurar-aliquotas">Restaurar padrão (CBS 10% / IBS 18%)</button>
+      <div id="resultado-aliquotas" style="margin-top:8px"></div>
+    </div>
+
+    <div class="cartao">
+      <h2>Comparação e projeção anual (2026 a 2033)</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Pega TODOS os lançamentos já salvos desta empresa (qualquer competência) e recalcula quanto
+        seria devido em cada ano do cronograma de transição da reforma — sem precisar relançar nada.
+        Útil para comparar "quanto pago hoje" com "quanto vou pagar quando a alíquota estiver plena".
+      </p>
+      <div class="grade">
+        <div class="campo"><label>Ano inicial</label><input id="projecao-ano-inicio" type="number" value="2026" /></div>
+        <div class="campo"><label>Ano final</label><input id="projecao-ano-fim" type="number" value="2033" /></div>
+      </div>
+      <button type="button" class="acao" id="btn-projetar">Projetar</button>
+      <div id="resultado-projecao"></div>
+    </div>
+
+    <div class="cartao">
+      <h2>Apuração de ICMS e ISS (junto com IBS/CBS)</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Os tributos do sistema ATUAL (PIS, COFINS, ICMS, ISS, IPI) informados em cada lançamento
+        (manual ou por planilha), com o cronograma de extinção/redução da reforma aplicado ano a ano
+        — a mesma previsão que já existe na planilha Excel exportada, agora também aqui na tela.
+        Sem nenhum tributo antigo informado nos lançamentos, os valores aparecem zerados (normal, não
+        é erro — significa que só o IBS/CBS foi testado até agora).
+      </p>
+      <button type="button" class="acao" id="btn-apurar-icms-iss">Apurar ICMS/ISS</button>
+      <div id="resultado-icms-iss"></div>
+    </div>
+
+    <div class="cartao">
+      <h2>Exportar relatório</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Baixa todos os lançamentos (entrada e saída) desta empresa, a apuração de IBS/CBS e a projeção
+        ano a ano — usa o mesmo intervalo de anos definido acima ("Ano inicial"/"Ano final").
+      </p>
+      <button type="button" class="acao" id="btn-exportar-excel">Baixar planilha Excel (.xlsx)</button>
+      <button type="button" class="acao secundario" id="btn-exportar-pdf">Baixar relatório resumido (PDF)</button>
+      <div id="resultado-exportacao" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ===================== HISTÓRICO ===================== -->
+  <section id="painel-historico" class="painel">
+    <div class="cartao">
+      <h2>Histórico / memória de cálculo</h2>
+      <form id="form-historico">
+        <div class="campo">
+          <label>Nº da operação</label>
+          <input name="operacaoId" required placeholder="ex: nfe-00123" />
+        </div>
+        <button type="submit" class="acao">Consultar</button>
+      </form>
+    </div>
+    <div id="resultado-historico"></div>
+  </section>
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <section id="painel-dashboard" class="painel">
+    <div class="cartao">
+      <h2>Dashboard Fiscal</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Análise de apuração IBS-CBS por ano — usa a mesma projeção da aba "Apuração Anual" (2026 a 2033).
+        Troque o ano no seletor abaixo para atualizar os cartões e a situação, sem recarregar nada.
+      </p>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px">
+        <button class="acao secundario" id="btn-dash-fiscal-carregar">Carregar</button>
+        <label id="dash-fiscal-seletor-wrapper" style="font-size:13px" hidden>
+          Selecione o ano:
+          <select id="dash-fiscal-ano" style="margin-left:6px;padding:4px 8px;border:1px solid var(--cinza-borda);border-radius:6px"></select>
+        </label>
+      </div>
+      <div id="dash-fiscal-conteudo"></div>
+    </div>
+    <div class="cartao">
+      <h2>Entradas: Simples Nacional vs demais empresas (%)</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Percentual do VALOR comprado (não só a contagem de lançamentos) que veio de fornecedores optantes
+        pelo Simples Nacional, comparado com as demais empresas — considera só lançamentos de entrada
+        (compra/importação). Preenchido quando você marca a opção "optante pelo Simples Nacional" no
+        lançamento manual, ou "contraparte desta planilha é optante do Simples Nacional" na importação.
+      </p>
+      <button class="acao secundario" id="btn-dash-simples-nacional">Carregar</button>
+      <div id="grafico-simples-nacional"></div>
+    </div>
+    <div class="cartao">
+      <h2>Economia gerada por benefícios fiscais (R$)</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Compara o que seria devido na alíquota de referência do ano com o que foi realmente apurado
+        com o benefício aplicado — o valor que os benefícios fiscais efetivamente pouparam da empresa,
+        não só a base afetada.
+      </p>
+      <button class="acao secundario" id="btn-dash-economia">Carregar</button>
+      <div id="grafico-economia"></div>
+    </div>
+    <div class="cartao">
+      <h2>Total apurado — IBS vs CBS</h2>
+      <button class="acao secundario" id="btn-dash-total-tributo">Carregar</button>
+      <div id="grafico-total-tributo"></div>
+    </div>
+    <div class="cartao">
+      <h2>Evolução do total apurado por ano</h2>
+      <p style="font-size:13px;color:#6b7280">
+        Soma de tudo que foi calculado, agrupado pelo ano da operação — útil para comparar anos
+        diferentes do cronograma de transição que você tenha testado.
+      </p>
+      <button class="acao secundario" id="btn-dash-evolucao">Carregar</button>
+      <div id="grafico-evolucao"></div>
+    </div>
+    <div class="cartao">
+      <h2>Base afetada por benefício fiscal</h2>
+      <button class="acao secundario" id="btn-dash-beneficios">Carregar</button>
+      <div id="grafico-beneficios"></div>
+    </div>
+    <div class="cartao">
+      <h2>Indicadores por regime tributário</h2>
+      <button class="acao secundario" id="btn-dash-regimes">Carregar</button>
+      <div id="grafico-regimes"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Tax Engine IBS/CBS/IS — lançamentos e histórico ficam salvos em disco (pasta "dados") e sobrevivem a fechar o programa.</footer>
+
+</div>
+
+<script>
+const $ = (sel, ctx) => (ctx || document).querySelector(sel);
+const $$ = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
+
+// ---------- ativação + login (roda ANTES de qualquer outra coisa) ----------
+async function chamarApiSemGate(url, opcoes) {
+  const resposta = await fetch(url, opcoes);
+  const texto = await resposta.text();
+  let corpo;
+  try { corpo = JSON.parse(texto); } catch { corpo = texto; }
+  if (!resposta.ok) {
+    const msg = (corpo && corpo.message) ? corpo.message : (typeof corpo === 'string' ? corpo : JSON.stringify(corpo));
+    throw new Error(Array.isArray(msg) ? msg.join(' ') : msg);
+  }
+  return corpo;
+}
+
+function mostrarTela(id) {
+  ['tela-ativacao', 'tela-login'].forEach((outroId) => {
+    $('#' + outroId).style.display = outroId === id ? 'flex' : 'none';
+  });
+  $('#app-conteudo').style.display = id ? 'none' : '';
+}
+
+async function verificarAcessoEIniciar() {
+  let statusAtivacao;
+  try {
+    statusAtivacao = await chamarApiSemGate('/ativacao/status');
+  } catch (e) {
+    // backend ainda subindo — tenta de novo em breve, sem travar numa tela de erro
+    setTimeout(verificarAcessoEIniciar, 1000);
+    return;
+  }
+
+  if (!statusAtivacao.ativado) {
+    $('#ativacao-mensagem-motivo').textContent = statusAtivacao.motivoBloqueio || '';
+    $('#ativacao-mensagem-motivo').style.display = statusAtivacao.motivoBloqueio ? '' : 'none';
+    mostrarTela('tela-ativacao');
+    return;
+  }
+
+  const statusAuth = await chamarApiSemGate('/auth/status');
+  if (!statusAuth.temUsuarioCadastrado) {
+    $('#login-titulo').textContent = 'Criar usuário';
+    $('#login-subtitulo').textContent = 'Sistema ativado — crie o usuário e senha de acesso (usuário com pelo menos 3 caracteres, senha com pelo menos 6).';
+    $('#btn-login-submit').textContent = 'Criar usuário e entrar';
+    $('#form-login').dataset.modo = 'cadastro';
+    mostrarTela('tela-login');
+    return;
+  }
+  if (!statusAuth.logado) {
+    $('#login-titulo').textContent = 'Entrar';
+    $('#login-subtitulo').textContent = 'Sistema ativado — informe seu usuário e senha para continuar.';
+    $('#btn-login-submit').textContent = 'Entrar';
+    $('#form-login').dataset.modo = 'login';
+    mostrarTela('tela-login');
+    return;
+  }
+
+  mostrarTela(null); // libera o app de verdade
+
+  // Revalidação com o servidor de licenças (se configurado) e checagem de
+  // atualização — em segundo plano, não atrasam a tela abrindo. Se a
+  // revalidação online descobrir que a ativação não vale mais (chave
+  // revogada, por exemplo), volta pra tela de ativação.
+  chamarApiSemGate('/ativacao/revalidar-online', { method: 'POST' })
+    .then((statusRevalidado) => {
+      if (!statusRevalidado.ativado) verificarAcessoEIniciar();
+    })
+    .catch(() => {}); // servidor de licenças inalcançável — segue com a ativação local em cache, sem incomodar o usuário
+
+  verificarAtualizacaoDisponivel();
+}
+
+async function verificarAtualizacaoDisponivel() {
+  try {
+    const resultado = await chamarApiSemGate('/atualizacao/verificar');
+    if (!resultado.disponivel) return;
+    $('#banner-atualizacao-texto').textContent =
+      'Uma nova versão está disponível (v' + resultado.versaoMaisRecente + ', você está na v' + resultado.versaoAtual + ')' +
+      (resultado.notas ? ' — ' + resultado.notas : '') + '.';
+    const link = $('#banner-atualizacao-link');
+    if (resultado.urlDownload) {
+      link.href = resultado.urlDownload;
+      link.style.display = '';
+    } else {
+      link.style.display = 'none';
+    }
+    $('#banner-atualizacao').style.display = 'flex';
+  } catch (e) {
+    // sem servidor configurado ou inalcançável — não mostra nada, silenciosamente
+  }
+}
+
+$('#banner-atualizacao-fechar').addEventListener('click', () => {
+  $('#banner-atualizacao').style.display = 'none';
+});
+
+$('#ativacao-chave').addEventListener('input', (ev) => {
+  const posicaoCursor = ev.target.selectionStart;
+  const semTracos = ev.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  const comTracos = semTracos.match(/.{1,5}/g)?.join('-') ?? semTracos;
+  const diferenca = comTracos.length - ev.target.value.length;
+  ev.target.value = comTracos;
+  ev.target.setSelectionRange(posicaoCursor + diferenca, posicaoCursor + diferenca);
+});
+
+$('#form-ativacao').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const container = $('#ativacao-resultado');
+  const chave = $('#ativacao-chave').value;
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Verificando…</p>';
+  try {
+    const resultado = await chamarApiSemGate('/ativacao/ativar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chave }),
+    });
+    if (!resultado.sucesso) {
+      container.innerHTML = '<div class="erro">' + resultado.mensagem + '</div>';
+      return;
+    }
+    container.innerHTML = '';
+    verificarAcessoEIniciar();
+  } catch (e) {
+    container.innerHTML = '<div class="erro">' + e.message + '</div>';
+  }
+});
+
+$('#form-login').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const container = $('#login-resultado');
+  const usuario = $('#login-usuario').value;
+  const senha = $('#login-senha').value;
+  const modo = ev.target.dataset.modo === 'cadastro' ? 'cadastrar' : 'login';
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Verificando…</p>';
+  try {
+    const resultado = await chamarApiSemGate('/auth/' + modo, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario, senha }),
+    });
+    if (!resultado.sucesso) {
+      container.innerHTML = '<div class="erro">' + resultado.mensagem + '</div>';
+      return;
+    }
+    container.innerHTML = '';
+    verificarAcessoEIniciar();
+  } catch (e) {
+    container.innerHTML = '<div class="erro">' + e.message + '</div>';
+  }
+});
+
+verificarAcessoEIniciar();
+
+// ---------- navegação entre painéis ----------
+$$('#menu button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $$('#menu button').forEach((b) => b.classList.remove('ativo'));
+    $$('.painel').forEach((p) => p.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    $('#painel-' + btn.dataset.painel).classList.add('ativo');
+  });
+});
+
+let empresaAtual = null;
+let lancamentos = []; // { operacaoId, tipo, resultados: ResultadoDebito[] }
+let lancamentosOcultos = false;
+
+// ---------- helpers ----------
+function formToObjeto(form) {
+  const dados = {};
+  new FormData(form).forEach((valor, chave) => {
+    if (valor !== '') dados[chave] = valor;
+  });
+  // O formulário só pede o ANO (o cronograma de transição da lei é por
+  // ano) — o backend ainda usa uma data completa internamente, então
+  // convertemos aqui para o dia 1º de janeiro daquele ano.
+  if (dados.anoOperacao) {
+    dados.dataOperacao = dados.anoOperacao + '-01-01';
+    delete dados.anoOperacao;
+  }
+  return dados;
+}
+
+function formatarMoeda(valorString) {
+  const n = Number(valorString);
+  if (Number.isNaN(n)) return valorString;
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function mostrarErro(container, mensagem) {
+  container.innerHTML = '<div class="erro">' + mensagem + '</div>';
+}
+
+async function chamarApi(url, opcoes) {
+  const resposta = await fetch(url, opcoes);
+  const texto = await resposta.text();
+  let corpo;
+  try { corpo = JSON.parse(texto); } catch { corpo = texto; }
+  if (!resposta.ok) {
+    const msg = (corpo && corpo.message) ? corpo.message : (typeof corpo === 'string' ? corpo : JSON.stringify(corpo));
+    throw new Error('Erro ' + resposta.status + ': ' + msg);
+  }
+  return corpo;
+}
+
+// ---------- dados da empresa (busca por CNPJ) ----------
+function renderizarEmpresaEncontrada(empresa) {
+  const container = $('#dados-empresa-encontrada');
+  const simplesTexto = empresa.optanteSimplesNacional === true ? 'Sim' : empresa.optanteSimplesNacional === false ? 'Não' : 'Não informado';
+  container.innerHTML =
+    '<div class="sucesso">' +
+    '<strong>' + empresa.razaoSocial + '</strong>' + (empresa.nomeFantasia && empresa.nomeFantasia !== empresa.razaoSocial ? ' (' + empresa.nomeFantasia + ')' : '') + '<br>' +
+    empresa.municipio + '/' + empresa.uf + ' · CNAE: ' + empresa.cnaeFiscal + ' — ' + empresa.cnaeFiscalDescricao + '<br>' +
+    'Optante pelo Simples Nacional: ' + simplesTexto + ' · Situação: ' + empresa.situacaoCadastral +
+    '</div>';
+}
+
+function preencherFormularioComEmpresa(empresa) {
+  const form = $('#form-calculo');
+  if (empresa.uf) form.ufOrigem.value = empresa.uf;
+  if (empresa.codigoMunicipioIbge) form.municipioOrigemIbge.value = empresa.codigoMunicipioIbge;
+  if (empresa.cnaeFiscal) form.cnae.value = empresa.cnaeFiscal;
+  if (empresa.optanteSimplesNacional === true) {
+    form.optanteSimplesNacional.value = 'true';
+  } else if (empresa.optanteSimplesNacional === false) {
+    form.optanteSimplesNacional.value = '';
+  }
+}
+
+$('#btn-buscar-cnpj').addEventListener('click', async () => {
+  const cnpj = $('#input-cnpj').value.trim();
+  const container = $('#dados-empresa-encontrada');
+  if (!cnpj) {
+    mostrarErro(container, 'Informe um CNPJ.');
+    return;
+  }
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Buscando…</p>';
+  try {
+    const empresa = await chamarApi('/empresa/cnpj/' + encodeURIComponent(cnpj));
+    empresaAtual = empresa;
+    renderizarEmpresaEncontrada(empresa);
+    preencherFormularioComEmpresa(empresa);
+    // troca para os lançamentos salvos desta empresa — cada CNPJ tem sua própria lista
+    await carregarLancamentosSalvos(empresa.cnpj);
+  } catch (e) {
+    empresaAtual = null;
+    mostrarErro(container, e.message);
+  }
+});
+
+// ---------- lançamentos, salvos por empresa ----------
+function totalPorTributo(lista) {
+  const totais = {};
+  for (const lanc of lista) {
+    for (const r of lanc.resultados) {
+      totais[r.tributo] = (totais[r.tributo] || 0) + Number(r.valor);
+    }
+  }
+  return totais;
+}
+
+function atualizarTituloLancamentos() {
+  const titulo = $('#titulo-lancamentos');
+  titulo.textContent = empresaAtual
+    ? 'Lançamentos salvos — ' + empresaAtual.razaoSocial + ' (' + empresaAtual.cnpj + ')'
+    : 'Lançamentos salvos — sem empresa vinculada';
+}
+
+const TIPOS_DE_ENTRADA = new Set(['COMPRA', 'IMPORTACAO']);
+
+/**
+ * A tabela de lançamentos salvos NUNCA desenha a lista inteira de uma vez
+ * — travava o navegador de verdade com planilhas reais grandes (relatado:
+ * duas importações somando ~66 mil lançamentos deixaram a tela
+ * completamente travada, sem resposta). Construir uma string HTML com
+ * dezenas de milhares de `<tr>` e jogar tudo de uma vez em `innerHTML` é
+ * uma operação pesada o bastante para travar o processo de renderização
+ * (no Electron, isso trava a JANELA INTEIRA do programa, não só uma aba).
+ * Os TOTAIS (débito/crédito por tributo) continuam somando a lista
+ * INTEIRA — só o que é desenhado na tela é limitado por página.
+ */
+const LINHAS_POR_PAGINA_TABELA = 200;
+let paginaAtualLancamentosTabela = 0;
+
+function renderizarTabelaLancamentos() {
+  atualizarTituloLancamentos();
+  const container = $('#tabela-lancamentos');
+  if (lancamentos.length === 0) {
+    container.innerHTML = '<p style="font-size:13px;color:#6b7280">Nenhum lançamento salvo ainda' + (empresaAtual ? ' para esta empresa.' : '.') + '</p>';
+    aplicarEstadoOcultacaoLancamentos();
+    return;
+  }
+  const regimeEmpresaTexto = !empresaAtual
+    ? 'Empresa não identificada'
+    : empresaAtual.optanteSimplesNacional === true
+      ? 'Simples Nacional'
+      : empresaAtual.optanteSimplesNacional === false
+        ? 'Regime normal'
+        : 'Não informado';
+  const corRegimeEmpresa = !empresaAtual ? '#9ca3af' : empresaAtual.optanteSimplesNacional === true ? 'var(--verde)' : empresaAtual.optanteSimplesNacional === false ? 'var(--azul-escuro)' : '#9ca3af';
+
+  const totalPaginas = Math.max(1, Math.ceil(lancamentos.length / LINHAS_POR_PAGINA_TABELA));
+  paginaAtualLancamentosTabela = Math.min(Math.max(0, paginaAtualLancamentosTabela), totalPaginas - 1);
+  const inicio = paginaAtualLancamentosTabela * LINHAS_POR_PAGINA_TABELA;
+  const paginaAtual = lancamentos.slice(inicio, inicio + LINHAS_POR_PAGINA_TABELA);
+
+  let html = '';
+  if (totalPaginas > 1) {
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px">' +
+            '<button type="button" class="acao secundario" id="btn-pagina-lanc-anterior"' + (paginaAtualLancamentosTabela === 0 ? ' disabled' : '') + '>&larr; Anterior</button>' +
+            '<span>Mostrando ' + (inicio + 1) + '–' + (inicio + paginaAtual.length) + ' de ' + lancamentos.length.toLocaleString('pt-BR') + ' lançamentos ' +
+            '(página ' + (paginaAtualLancamentosTabela + 1) + ' de ' + totalPaginas + ')</span>' +
+            '<button type="button" class="acao secundario" id="btn-pagina-lanc-proxima"' + (paginaAtualLancamentosTabela >= totalPaginas - 1 ? ' disabled' : '') + '>Próxima &rarr;</button>' +
+            '</div>';
+  }
+
+  html += '<div style="max-height:520px;overflow:auto;border:1px solid var(--cinza-borda);border-radius:6px">';
+  html += '<table style="margin-top:0"><thead><tr><th>#</th><th>Operação</th><th>Nº Nota</th><th>Contraparte</th><th>Descrição</th><th>NCM/NBS</th><th>CFOP</th><th>Tipo</th><th>D/C</th><th>Valor bruto</th>' +
+          '<th>Alíq. IBS Est.</th><th>IBS Estadual</th><th>Alíq. IBS Mun.</th><th>IBS Municipal</th><th>Alíq. CBS</th><th>CBS</th>' +
+          '<th>PIS</th><th>COFINS</th><th>ICMS</th><th>ISS</th><th>IPI</th><th>Benefício aplicado</th><th>Regime da empresa</th></tr></thead><tbody>';
+  paginaAtual.forEach((lanc, iRelativo) => {
+    const i = inicio + iRelativo;
+    const por = (trib) => lanc.resultados.find((r) => r.tributo === trib);
+    const aliquotaTexto = (trib) => {
+      const r = por(trib);
+      if (!r) return '—';
+      return Number(r.aliquotaEfetiva).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '%';
+    };
+    const valor = (trib) => {
+      const r = por(trib);
+      return r ? formatarMoeda(r.valor) : '—';
+    };
+    const valorAntigo = (campo) => (lanc[campo] !== undefined && lanc[campo] !== null && lanc[campo] !== '' ? formatarMoeda(lanc[campo]) : '—');
+    const entrada = TIPOS_DE_ENTRADA.has(lanc.tipo);
+    const tag = entrada
+      ? '<span class="beneficio-tag" style="background:#eaf7ec;color:var(--verde)">Crédito</span>'
+      : '<span class="beneficio-tag">Débito</span>';
+
+    // benefícios aplicados: normalmente os 3 tributos compartilham o mesmo, mas deduplica por código para o caso de divergirem
+    const codigosVistos = new Set();
+    const beneficios = [];
+    lanc.resultados.forEach((r) => {
+      (r.beneficiosAplicados || []).forEach((b) => {
+        if (!codigosVistos.has(b.codigo)) {
+          codigosVistos.add(b.codigo);
+          beneficios.push(b);
+        }
+      });
+    });
+    const celulaBeneficio = beneficios.length === 0
+      ? '<span style="color:#9ca3af">Sem benefício</span>'
+      : beneficios.map((b) => {
+          const percentual = b.percentualReducao !== undefined && b.percentualReducao !== null
+            ? ' (' + Number(b.percentualReducao).toLocaleString('pt-BR') + '% red.)'
+            : '';
+          return '<span class="beneficio-tag" title="' + (b.baseLegal || '') + '" style="background:#eaf0fb;color:var(--azul-escuro);white-space:nowrap">' + b.codigo + percentual + '</span>';
+        }).join(' ');
+
+    html += '<tr><td>' + (i + 1) + '</td><td>' + lanc.operacaoId + '</td>' +
+            '<td>' + (lanc.numeroNota || '—') + '</td>' +
+            '<td>' + (lanc.nomeContraparte || '—') + '</td>' +
+            '<td>' + (lanc.descricao || '—') + '</td>' +
+            '<td>' + (lanc.ncm || lanc.nbs || '—') + '</td>' +
+            '<td>' + (lanc.cfop || '—') + '</td>' +
+            '<td>' + lanc.tipo + '</td><td>' + tag + '</td>' +
+            '<td>' + (lanc.valorBruto ? formatarMoeda(lanc.valorBruto) : '—') + '</td>' +
+            '<td style="color:#6b7280">' + aliquotaTexto('IBS_ESTADUAL') + '</td><td>' + valor('IBS_ESTADUAL') + '</td>' +
+            '<td style="color:#6b7280">' + aliquotaTexto('IBS_MUNICIPAL') + '</td><td>' + valor('IBS_MUNICIPAL') + '</td>' +
+            '<td style="color:#6b7280">' + aliquotaTexto('CBS') + '</td><td>' + valor('CBS') + '</td>' +
+            '<td>' + valorAntigo('valorPis') + '</td><td>' + valorAntigo('valorCofins') + '</td>' +
+            '<td>' + valorAntigo('valorIcms') + '</td><td>' + valorAntigo('valorIss') + '</td><td>' + valorAntigo('valorIpi') + '</td>' +
+            '<td>' + celulaBeneficio + '</td>' +
+            '<td style="color:' + corRegimeEmpresa + ';white-space:nowrap">' + regimeEmpresaTexto + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+
+  const debitos = totalPorTributo(lancamentos.filter((l) => !TIPOS_DE_ENTRADA.has(l.tipo)));
+  const creditos = totalPorTributo(lancamentos.filter((l) => TIPOS_DE_ENTRADA.has(l.tipo)));
+  const linhaTotal = (rotulo, totais, estilo) =>
+    '<tr style="' + estilo + '"><td colspan="10">' + rotulo + '</td>' +
+    '<td></td><td>' + formatarMoeda(totais.IBS_ESTADUAL || 0) + '</td>' +
+    '<td></td><td>' + formatarMoeda(totais.IBS_MUNICIPAL || 0) + '</td>' +
+    '<td></td><td>' + formatarMoeda(totais.CBS || 0) + '</td>' +
+    '<td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+  let htmlTotais = '<div style="overflow-x:auto"><table style="margin-top:0">';
+  htmlTotais += linhaTotal('Total débitos (saídas)', debitos, 'font-weight:600;background:var(--cinza-claro)');
+  htmlTotais += linhaTotal('Total créditos (entradas)', creditos, 'font-weight:600;background:var(--cinza-claro)');
+  const saldo = {
+    IBS_ESTADUAL: (debitos.IBS_ESTADUAL || 0) - (creditos.IBS_ESTADUAL || 0),
+    IBS_MUNICIPAL: (debitos.IBS_MUNICIPAL || 0) - (creditos.IBS_MUNICIPAL || 0),
+    CBS: (debitos.CBS || 0) - (creditos.CBS || 0),
+  };
+  htmlTotais += linhaTotal('Saldo (débito − crédito)', saldo, 'font-weight:700;background:#e5f0ff');
+  htmlTotais += '</table></div>';
+  container.innerHTML = html + htmlTotais;
+  aplicarEstadoOcultacaoLancamentos();
+
+  if (totalPaginas > 1) {
+    const btnAnterior = $('#btn-pagina-lanc-anterior');
+    const btnProxima = $('#btn-pagina-lanc-proxima');
+    if (btnAnterior) btnAnterior.addEventListener('click', () => { paginaAtualLancamentosTabela--; renderizarTabelaLancamentos(); });
+    if (btnProxima) btnProxima.addEventListener('click', () => { paginaAtualLancamentosTabela++; renderizarTabelaLancamentos(); });
+  }
+}
+
+function aplicarEstadoOcultacaoLancamentos() {
+  $('#tabela-lancamentos').style.display = lancamentosOcultos ? 'none' : '';
+}
+
+$('#btn-toggle-lancamentos').addEventListener('click', () => {
+  lancamentosOcultos = !lancamentosOcultos;
+  $('#btn-toggle-lancamentos').textContent = lancamentosOcultos ? 'Mostrar lançamentos' : 'Esconder lançamentos';
+  aplicarEstadoOcultacaoLancamentos();
+});
+
+$('#btn-limpar-lancamentos').addEventListener('click', async () => {
+  const rotulo = empresaAtual ? empresaAtual.razaoSocial : 'sem empresa vinculada';
+  if (lancamentos.length > 0 && !confirm('Limpar os ' + lancamentos.length + ' lançamentos salvos de "' + rotulo + '"? Isso também apaga o que foi salvo em disco para esta empresa.')) return;
+  lancamentos = [];
+  renderizarTabelaLancamentos();
+  try {
+    const query = empresaAtual ? '?cnpj=' + encodeURIComponent(empresaAtual.cnpj) : '';
+    await chamarApi('/lancamentos' + query, { method: 'DELETE' });
+  } catch (e) {
+    mostrarErro($('#tabela-lancamentos'), 'Lançamentos limpos na tela, mas houve um erro ao limpar o arquivo salvo: ' + e.message);
+  }
+});
+
+async function carregarLancamentosSalvos(cnpj) {
+  try {
+    const query = cnpj ? '?cnpj=' + encodeURIComponent(cnpj) : '';
+    const salvos = await chamarApi('/lancamentos' + query);
+    lancamentos = salvos.map((l) => ({
+      operacaoId: l.operacaoId,
+      tipo: l.tipo,
+      competencia: l.competencia,
+      resultados: l.resultados,
+      descricao: l.descricao,
+      ncm: l.ncm,
+      nbs: l.nbs,
+      valorBruto: l.valorBruto,
+      cfop: l.cfop,
+      valorPis: l.valorPis,
+      valorCofins: l.valorCofins,
+      valorIcms: l.valorIcms,
+      valorIss: l.valorIss,
+      valorIpi: l.valorIpi,
+      zfmOuAlc: l.zfmOuAlc,
+      numeroNota: l.numeroNota,
+      chaveAcesso: l.chaveAcesso,
+      quantidade: l.quantidade,
+      nomeContraparte: l.nomeContraparte,
+      contraparteOptanteSimplesNacional: l.contraparteOptanteSimplesNacional,
+    }));
+    paginaAtualLancamentosTabela = 0;
+    renderizarTabelaLancamentos();
+  } catch (e) {
+    // Sem lançamentos salvos ou servidor recém-iniciado sem arquivo ainda — normal, ignora.
+  }
+  // Atualiza a apuração automática do ano mais recente entre os lançamentos
+  // já salvos desta empresa — não do ano real do calendário do computador
+  // (bug corrigido: antes usava sempre "hoje", então se você lançasse
+  // operações em 2026 ou 2033 para testar o cronograma da reforma, o card
+  // automático ficava consultando um ano completamente diferente e parecia
+  // que os lançamentos não estavam sendo "puxados").
+  const anoMaisRecente = lancamentos.length > 0
+    ? [...lancamentos].map((l) => l.competencia.slice(0, 4)).sort().reverse()[0]
+    : String(new Date().getFullYear());
+  atualizarApuracaoTempoReal(anoMaisRecente);
+}
+function renderizarResultadoCalculo(payload, simulado) {
+  const container = $('#resultado-calculo');
+  let html = '<div class="cartao">';
+  html += '<h2>' + (simulado ? 'Resultado da simulação' : 'Lançamento adicionado') + ' — ' + payload.operacaoId + '</h2>';
+  html += '<table><thead><tr><th>Tributo</th><th>Base de cálculo</th><th>Alíquota efetiva</th><th>Valor</th><th>Benefícios aplicados</th></tr></thead><tbody>';
+  for (const r of payload.resultados) {
+    const beneficios = (r.beneficiosAplicados || []).map((b) => '<span class="beneficio-tag">' + b.codigo + '</span>').join(' ') || '—';
+    const classeValor = Number(r.valor) === 0 ? 'valor-zero' : '';
+    html += '<tr><td>' + r.tributo + '</td><td>' + formatarMoeda(r.baseCalculo) + '</td><td>' + r.aliquotaEfetiva + '%</td>' +
+            '<td class="' + classeValor + '">' + formatarMoeda(r.valor) + '</td><td>' + beneficios + '</td></tr>';
+  }
+  html += '</tbody></table>';
+  html += '<details style="margin-top:14px"><summary>Ver memória de cálculo completa (JSON)</summary><pre class="json">' + JSON.stringify(payload.resultados, null, 2) + '</pre></details>';
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ---------- importação de planilha (entrada/saída) ----------
+$('#importacao-data').valueAsDate = new Date();
+
+function renderizarResultadoImportacao(payload) {
+  const container = $('#resultado-importacao');
+  let html = '<div class="cartao">';
+  html += '<h3>Importação concluída — competência ' + payload.competencia + '</h3>';
+  html += '<table><tbody>';
+  html += '<tr><td>Linhas na planilha</td><td>' + payload.totalLinhas + '</td></tr>';
+  html += '<tr><td>Processadas (viraram lançamento)</td><td>' + payload.processadas + '</td></tr>';
+  html += '<tr><td>Ignoradas</td><td>' + payload.ignoradas.length + '</td></tr>';
+  html += '<tr style="font-weight:700"><td>Total CBS</td><td>' + formatarMoeda(payload.resumo.totalCbs) + '</td></tr>';
+  html += '<tr style="font-weight:700"><td>Total IBS Estadual</td><td>' + formatarMoeda(payload.resumo.totalIbsEstadual) + '</td></tr>';
+  html += '<tr style="font-weight:700"><td>Total IBS Municipal</td><td>' + formatarMoeda(payload.resumo.totalIbsMunicipal) + '</td></tr>';
+  html += '<tr style="font-weight:700;background:var(--cinza-claro)"><td>Total geral</td><td>' + formatarMoeda(payload.resumo.totalGeral) + '</td></tr>';
+  html += '</tbody></table>';
+
+  if (payload.ignoradas.length > 0) {
+    html += '<details style="margin-top:12px"><summary>Ver linhas ignoradas (' + payload.ignoradas.length + ')</summary>';
+    html += '<table><thead><tr><th>Linha</th><th>Motivo</th></tr></thead><tbody>';
+    for (const ig of payload.ignoradas) {
+      html += '<tr><td>' + ig.linha + '</td><td>' + ig.motivo + '</td></tr>';
+    }
+    html += '</tbody></table></details>';
+  }
+
+  html += '<details style="margin-top:12px" open><summary>Ver as ' + payload.linhas.length + ' linhas importadas</summary>';
+  html += '<p style="font-size:12px;color:#6b7280;margin:6px 0">Estas mesmas linhas já ficaram salvas na tabela "Lançamentos salvos" (aba acima) — esta lista aqui é só a conferência imediata da importação.</p>';
+  html += '<div style="max-height:480px;overflow-y:auto;border:1px solid var(--cinza-borda);border-radius:6px">';
+  html += '<table style="margin-top:0"><thead><tr><th>Linha</th><th>Descrição</th><th>NCM/NBS</th><th>Valor bruto</th><th>IBS Estadual</th><th>IBS Municipal</th><th>CBS</th></tr></thead><tbody>';
+  for (const l of payload.linhas) {
+    const por = (trib) => l.resultados.find((r) => r.tributo === trib);
+    const valor = (trib) => { const r = por(trib); return r ? formatarMoeda(r.valor) : '—'; };
+    html += '<tr><td>' + l.linha + '</td><td>' + l.descricao + '</td><td>' + (l.ncm || l.nbs || '—') + '</td>' +
+            '<td>' + formatarMoeda(l.valorBruto) + '</td>' +
+            '<td>' + valor('IBS_ESTADUAL') + '</td><td>' + valor('IBS_MUNICIPAL') + '</td><td>' + valor('CBS') + '</td></tr>';
+  }
+  html += '</tbody></table></div></details>';
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+$('#form-importacao').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const container = $('#resultado-importacao');
+  const barraContainer = $('#progresso-importacao');
+  const barra = $('#progresso-importacao-barra');
+  const texto = $('#progresso-importacao-texto');
+  const percentual = $('#progresso-importacao-percentual');
+  const arquivoInput = $('#importacao-arquivo');
+  if (!arquivoInput.files[0]) {
+    mostrarErro(container, 'Selecione um arquivo.');
+    return;
+  }
+
+  const tipoLote = $('#importacao-tipo').value;
+  const dataOperacao = $('#importacao-data').value;
+  const cnpj = empresaAtual ? empresaAtual.cnpj : '';
+  const cfopPadrao = $('#importacao-cfop-padrao').value;
+  const aliquotaIss = $('#importacao-aliquota-iss').value;
+  const contraparteSimplesNacional = $('#importacao-simples-nacional').value;
+  const consultarSimplesNacional = $('#importacao-consultar-simples-nacional').value;
+
+  container.innerHTML = '';
+  barraContainer.style.display = 'block';
+  barra.style.width = '0%';
+  texto.textContent = 'Enviando arquivo…';
+  percentual.textContent = '';
+
+  try {
+    // Etapa 1: sobe o arquivo e faz o parse (rápido) — devolve quantas linhas existem, antes de calcular qualquer coisa.
+    const formData = new FormData();
+    formData.append('arquivo', arquivoInput.files[0]);
+    const respostaUpload = await fetch('/importacao/planilha/upload', { method: 'POST', body: formData });
+    if (!respostaUpload.ok) {
+      const erro = await respostaUpload.json().catch(() => ({}));
+      throw new Error(erro.message || ('Erro ' + respostaUpload.status));
+    }
+    const { importId, totalLinhasBrutas } = await respostaUpload.json();
+    texto.textContent = 'Calculando 0 de ' + totalLinhasBrutas + ' linhas…';
+
+    // Etapa 2: consome o progresso real via Server-Sent Events — uma
+    // atualização por linha calculada e salva, não uma barra simulada.
+    await new Promise((resolve, reject) => {
+      const query = new URLSearchParams({ tipoLote, dataOperacao });
+      if (cnpj) query.set('cnpj', cnpj);
+      if (cfopPadrao) query.set('cfopPadrao', cfopPadrao);
+      if (aliquotaIss) query.set('aliquotaIss', aliquotaIss);
+      if (contraparteSimplesNacional) query.set('contraparteSimplesNacional', contraparteSimplesNacional);
+      if (consultarSimplesNacional) query.set('consultarSimplesNacional', consultarSimplesNacional);
+      const eventSource = new EventSource('/importacao/planilha/progresso/' + encodeURIComponent(importId) + '?' + query.toString());
+
+      eventSource.addEventListener('consultando-fornecedores', (ev) => {
+        const dados = JSON.parse(ev.data);
+        const pct = dados.total > 0 ? Math.round((dados.atual / dados.total) * 100) : 0;
+        barra.style.width = pct + '%';
+        percentual.textContent = pct + '%';
+        texto.textContent = 'Consultando fornecedor/cliente ' + dados.atual + ' de ' + dados.total + ' na Receita Federal…';
+      });
+
+      eventSource.addEventListener('progresso', (ev) => {
+        const dados = JSON.parse(ev.data);
+        const pct = dados.total > 0 ? Math.round((dados.processadas / dados.total) * 100) : 0;
+        barra.style.width = pct + '%';
+        percentual.textContent = pct + '%';
+        texto.textContent = 'Calculando ' + dados.processadas + ' de ' + dados.total + ' linhas…';
+      });
+
+      eventSource.addEventListener('concluido', (ev) => {
+        const payload = JSON.parse(ev.data);
+        barra.style.width = '100%';
+        percentual.textContent = '100%';
+        texto.textContent = 'Concluído.';
+        eventSource.close();
+        renderizarResultadoImportacao(payload);
+        resolve();
+      });
+
+      eventSource.addEventListener('erro', (ev) => {
+        const dados = JSON.parse(ev.data);
+        eventSource.close();
+        reject(new Error(dados.message || 'Erro ao importar a planilha.'));
+      });
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        reject(new Error(
+          'Conexão com o servidor perdida durante a importação (ex: computador bloqueou/dormiu, rede caiu). ' +
+          'O cálculo geralmente CONTINUA rodando no servidor mesmo sem a tela acompanhando — antes de importar de novo, ' +
+          'confira a aba "Lançamentos salvos" desta empresa: se os lançamentos já estiverem lá, não reimporte (duplicaria tudo).'
+        ));
+      };
+    });
+
+    // Recarrega os lançamentos salvos (agora incluindo os importados) e
+    // atualiza a apuração automática — mesmo fluxo de um lançamento manual.
+    await carregarLancamentosSalvos(empresaAtual ? empresaAtual.cnpj : undefined);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  } finally {
+    setTimeout(() => { barraContainer.style.display = 'none'; }, 1200);
+  }
+});
+
+function sugerirProximoIdOperacao() {
+  const n = lancamentos.length + 1;
+  const data = new Date().toISOString().slice(0, 10);
+  return 'lanc-' + data + '-' + String(n).padStart(3, '0');
+}
+
+async function executarCalculo(simulado) {
+  const form = $('#form-calculo');
+  const container = $('#resultado-calculo');
+  const dados = formToObjeto(form);
+  try {
+    const payload = await chamarApi('/operacoes/' + (simulado ? 'simulacao' : 'calculo'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados),
+    });
+    if (!simulado) {
+      const competencia = (dados.dataOperacao || new Date().toISOString().slice(0, 10)).slice(0, 4);
+      const lancamento = {
+        operacaoId: payload.operacaoId,
+        tipo: dados.tipo,
+        competencia,
+        resultados: payload.resultados,
+        ncm: dados.ncm,
+        nbs: dados.nbs,
+        valorBruto: dados.valorBruto,
+        cfop: dados.cfop,
+        valorPis: dados.valorPis,
+        valorCofins: dados.valorCofins,
+        valorIcms: dados.valorIcms,
+        valorIss: dados.valorIss,
+        valorIpi: dados.valorIpi,
+        zfmOuAlc: dados.operacaoZfmOuAlc === 'true',
+        contraparteOptanteSimplesNacional: dados.optanteSimplesNacional === 'true',
+      };
+      lancamentos.push(lancamento);
+      renderizarTabelaLancamentos();
+      // Prepara o próximo lançamento: novo identificador sugerido, mantém
+      // dados da empresa e classificação fiscal para agilizar a digitação.
+      form.operacaoId.value = sugerirProximoIdOperacao();
+      // Salva no servidor, vinculado ao CNPJ da empresa atual (se houver),
+      // para sobreviver a fechar o programa e a trocar de empresa sem se
+      // misturar com os lançamentos de outra — se falhar (ex: sem permissão
+      // de escrita em disco), o lançamento continua visível nesta sessão,
+      // só não é recuperado numa próxima abertura.
+      try {
+        await chamarApi('/lancamentos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...lancamento, cnpj: empresaAtual ? empresaAtual.cnpj : undefined }),
+        });
+      } catch (e) {
+        // lançamento continua visível nesta sessão mesmo se a gravação falhar
+      }
+      // Alimenta a apuração anual automaticamente, em tempo real, com o
+      // conjunto atualizado de lançamentos desta competência — sem precisar
+      // apertar nenhum botão manual.
+      atualizarApuracaoTempoReal(competencia);
+    }
+    renderizarResultadoCalculo(payload, simulado);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+}
+
+$('#form-calculo').addEventListener('submit', (ev) => { ev.preventDefault(); executarCalculo(false); });
+$('#btn-simular').addEventListener('click', () => executarCalculo(true));
+
+// ao carregar a página: recupera lançamentos salvos e sugere o próximo identificador
+document.addEventListener('DOMContentLoaded', async () => {
+  await carregarLancamentosSalvos();
+  const campoId = $('#form-calculo').operacaoId;
+  if (campoId && !campoId.value) campoId.value = sugerirProximoIdOperacao();
+});
+
+// ---------- benefícios ----------
+$('#form-beneficios').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const container = $('#resultado-beneficios');
+  const dados = formToObjeto(ev.target);
+  const query = new URLSearchParams(dados).toString();
+  try {
+    const lista = await chamarApi('/beneficios/consulta?' + query);
+    if (lista.length === 0) {
+      container.innerHTML = '<div class="cartao">Nenhum benefício encontrado para essa classificação.</div>';
+      return;
+    }
+    let html = '<div class="cartao"><h2>Benefícios encontrados</h2>';
+    if (lista.length > 1) {
+      html += '<p style="font-size:13px;color:#6b7280;background:#fff8e1;padding:8px 12px;border-radius:6px;margin-bottom:10px">' +
+              '⚠️ Esta classificação se encaixa em <strong>' + lista.length + ' tributações diferentes</strong> — ' +
+              'o sistema não tem como saber sozinho qual se aplica ao seu caso (depende do contexto real da operação). ' +
+              'Confira a base legal de cada uma e escolha a correta.</p>';
+    }
+    html += '<table><thead><tr><th>Código</th><th>Tipo</th><th>% Redução</th><th>Base legal</th></tr></thead><tbody>';
+    for (const b of lista) {
+      html += '<tr><td>' + b.codigo + '</td><td>' + b.tipo + '</td><td>' + (b.percentualReducao ?? '—') + '</td><td>' + b.baseLegal + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#form-beneficios-planilha').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const container = $('#resultado-beneficios-planilha');
+  const arquivoInput = $('#beneficios-planilha-arquivo');
+  if (!arquivoInput.files[0]) {
+    mostrarErro(container, 'Selecione um arquivo.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('arquivo', arquivoInput.files[0]);
+  const cfop = $('#beneficios-planilha-cfop').value;
+  if (cfop) formData.append('cfop', cfop);
+  formData.append('tipo', $('#beneficios-planilha-tipo').value);
+
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Consultando… pode levar alguns segundos para planilhas grandes.</p>';
+
+  try {
+    const resposta = await fetch('/beneficios/consulta-planilha', { method: 'POST', body: formData });
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => ({}));
+      throw new Error(erro.message || ('Erro ' + resposta.status));
+    }
+    const payload = await resposta.json();
+    renderizarResultadoConsultaPlanilha(container, payload);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+function renderizarResultadoConsultaPlanilha(container, payload) {
+  let html = '<div class="cartao">';
+  html += '<h3>Consulta concluída</h3>';
+  html += '<table><tbody>';
+  html += '<tr><td>Linhas na planilha</td><td>' + payload.totalLinhas + '</td></tr>';
+  html += '<tr><td>Códigos encontrados</td><td>' + payload.codigosEncontrados + '</td></tr>';
+  html += '<tr style="font-weight:700;color:var(--verde)"><td>Com benefício</td><td>' + payload.comBeneficio + '</td></tr>';
+  html += '<tr><td>Sem benefício</td><td>' + payload.semBeneficio + '</td></tr>';
+  html += '</tbody></table>';
+
+  html += '<h3 style="margin-top:16px">Resultado por linha</h3>';
+  html += '<table><thead><tr><th>Linha</th><th>Descrição</th><th>Código</th><th>Benefício</th><th>Tipo</th><th>% Redução</th><th>Base legal</th></tr></thead><tbody>';
+  for (const r of payload.resultados) {
+    const codigo = r.ncm || r.nbs || r.codigoOriginal;
+    if (r.beneficios.length === 0) {
+      html += '<tr><td>' + r.linha + '</td><td>' + (r.descricao || '—') + '</td><td>' + codigo + '</td>' +
+              '<td colspan="4" style="color:#6b7280">Nenhum benefício encontrado</td></tr>';
+    } else {
+      r.beneficios.forEach((b, i) => {
+        html += '<tr><td>' + (i === 0 ? r.linha : '') + '</td><td>' + (i === 0 ? (r.descricao || '—') : '') + '</td>' +
+                '<td>' + (i === 0 ? codigo : '') + '</td>' +
+                '<td><span class="beneficio-tag">' + b.codigo + '</span></td><td>' + b.tipo + '</td>' +
+                '<td>' + (b.percentualReducao ?? '—') + '</td><td>' + b.baseLegal + '</td></tr>';
+      });
+    }
+  }
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+// ---------- apuração automática em tempo real (alimentada a cada lançamento) ----------
+function renderizarResumoApuracao(container, resultado) {
+  const saldoTotal = Number(resultado.saldoIbs) + Number(resultado.saldoCbs);
+  const situacao = saldoTotal >= 0 ? 'a pagar' : 'saldo credor';
+  const statusTag = resultado.status === 'FECHADA'
+    ? '<span class="beneficio-tag" style="background:#eaf7ec;color:var(--verde)">FECHADA — não recebe mais lançamentos</span>'
+    : '<span class="beneficio-tag">ABERTA</span>';
+
+  container.innerHTML =
+    '<table><tbody>' +
+    '<tr><td>Competência</td><td>' + resultado.competencia + '</td></tr>' +
+    '<tr><td>Total débito IBS</td><td>' + formatarMoeda(resultado.totalDebitoIbs) + '</td></tr>' +
+    '<tr><td>Total débito CBS</td><td>' + formatarMoeda(resultado.totalDebitoCbs) + '</td></tr>' +
+    '<tr><td>Total crédito IBS</td><td>' + formatarMoeda(resultado.totalCreditoIbs) + '</td></tr>' +
+    '<tr><td>Total crédito CBS</td><td>' + formatarMoeda(resultado.totalCreditoCbs) + '</td></tr>' +
+    '<tr><td>Saldo IBS</td><td>' + formatarMoeda(resultado.saldoIbs) + '</td></tr>' +
+    '<tr><td>Saldo CBS</td><td>' + formatarMoeda(resultado.saldoCbs) + '</td></tr>' +
+    '<tr style="font-weight:700"><td>Total (' + situacao + ')</td><td>' + formatarMoeda(Math.abs(saldoTotal)) + '</td></tr>' +
+    '<tr><td>Status</td><td>' + statusTag + '</td></tr>' +
+    '</tbody></table>';
+}
+
+async function atualizarApuracaoTempoReal(competencia) {
+  const estabelecimentoId = empresaAtual ? empresaAtual.cnpj : 'sem-empresa';
+  const alvoCompetencia = competencia || String(new Date().getFullYear());
+  const titulo = $('#titulo-apuracao-tempo-real');
+  const container = $('#resumo-apuracao-tempo-real');
+  titulo.textContent = 'Apuração automática — ano ' + alvoCompetencia +
+    (empresaAtual ? ' (' + empresaAtual.razaoSocial + ')' : ' (sem empresa vinculada)');
+  try {
+    const resultado = await chamarApi(
+      '/apuracao/' + encodeURIComponent(estabelecimentoId) + '/' + encodeURIComponent(alvoCompetencia) + '/tempo-real',
+      { method: 'POST' },
+    );
+    renderizarResumoApuracao(container, resultado);
+  } catch (e) {
+    mostrarErro(container, 'Não foi possível atualizar a apuração automática: ' + e.message);
+  }
+}
+
+// ---------- apuração ----------
+$('#btn-usar-ultimo').addEventListener('click', async () => {
+  if (lancamentos.length === 0) {
+    alert('Nenhum lançamento nesta sessão ainda — calcule ao menos uma operação na aba "Calcular Operação".');
+    return;
+  }
+
+  const form = $('#form-apuracao');
+  if (empresaAtual && !form.estabelecimentoId.value) form.estabelecimentoId.value = empresaAtual.cnpj;
+  if (!form.competencia.value) form.competencia.value = String(new Date().getFullYear());
+
+  const estabelecimentoId = form.estabelecimentoId.value || 'sem-empresa';
+  const competencia = form.competencia.value;
+
+  // Busca do servidor a classificação já correta: lançamentos de compra/
+  // importação viram crédito, os demais viram débito — evita duplicar
+  // essa regra aqui no front-end (e evita divergir da apuração automática).
+  try {
+    const previa = await chamarApi(
+      '/apuracao/' + encodeURIComponent(estabelecimentoId) + '/' + encodeURIComponent(competencia) + '/classificacao',
+    );
+    $('#apuracao-debitos').value = JSON.stringify(previa.debitos, null, 2);
+    $('#apuracao-creditos').value = JSON.stringify(previa.creditos, null, 2);
+  } catch (e) {
+    mostrarErro($('#resultado-apuracao'), 'Não foi possível classificar os lançamentos: ' + e.message);
+  }
+});
+
+$('#btn-apurar-automatico').addEventListener('click', async () => {
+  const container = $('#resultado-apuracao');
+  const form = $('#form-apuracao');
+  if (empresaAtual && !form.estabelecimentoId.value) form.estabelecimentoId.value = empresaAtual.cnpj;
+  if (!form.competencia.value) form.competencia.value = String(new Date().getFullYear());
+  const estabelecimentoId = form.estabelecimentoId.value || 'sem-empresa';
+  const competencia = form.competencia.value;
+  try {
+    const resultado = await chamarApi(
+      '/apuracao/' + encodeURIComponent(estabelecimentoId) + '/' + encodeURIComponent(competencia) + '/tempo-real',
+      { method: 'POST' },
+    );
+    container.innerHTML = '<div class="cartao"><h2>Apuração automática — ' + resultado.competencia + '</h2>' +
+      '<div id="resumo-apuracao-manual"></div>' +
+      '<details style="margin-top:14px"><summary>Ver JSON completo</summary><pre class="json">' + JSON.stringify(resultado, null, 2) + '</pre></details></div>';
+    renderizarResumoApuracao($('#resumo-apuracao-manual'), resultado);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#form-apuracao').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const container = $('#resultado-apuracao');
+  const form = ev.target;
+  const estabelecimentoId = form.estabelecimentoId.value;
+  const competencia = form.competencia.value;
+  let debitos, creditos;
+  try {
+    debitos = JSON.parse(form.debitos.value || '[]');
+    creditos = JSON.parse(form.creditos.value || '[]');
+  } catch {
+    mostrarErro(container, 'JSON inválido em débitos ou créditos.');
+    return;
+  }
+  const corpo = { debitos, creditos };
+  if (form.saldoCredorTransportadoAnterior.value) corpo.saldoCredorTransportadoAnterior = form.saldoCredorTransportadoAnterior.value;
+  try {
+    const resultado = await chamarApi('/apuracao/' + encodeURIComponent(estabelecimentoId) + '/' + encodeURIComponent(competencia), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    });
+    container.innerHTML = '<div class="cartao"><h2>Apuração — ' + resultado.competencia + '</h2>' +
+      '<div id="resumo-apuracao-manual"></div>' +
+      '<details style="margin-top:14px"><summary>Ver JSON completo</summary><pre class="json">' + JSON.stringify(resultado, null, 2) + '</pre></details></div>';
+    renderizarResumoApuracao($('#resumo-apuracao-manual'), resultado);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#btn-fechar').addEventListener('click', async () => {
+  const container = $('#resultado-apuracao');
+  const form = $('#form-apuracao');
+  const estabelecimentoId = form.estabelecimentoId.value;
+  const competencia = form.competencia.value;
+  if (!estabelecimentoId || !competencia) {
+    alert('Preencha estabelecimento e competência.');
+    return;
+  }
+  try {
+    const resultado = await chamarApi('/apuracao/' + encodeURIComponent(estabelecimentoId) + '/' + encodeURIComponent(competencia) + '/fechamento', { method: 'POST' });
+    if (resultado.erro) {
+      mostrarErro(container, resultado.erro);
+    } else {
+      container.innerHTML = '<div class="sucesso">Período fechado com sucesso.</div><div class="cartao"><pre class="json">' + JSON.stringify(resultado, null, 2) + '</pre></div>';
+    }
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+// ---------- comparação e projeção anual ----------
+$('#btn-projetar').addEventListener('click', async () => {
+  const container = $('#resultado-projecao');
+  const cnpj = empresaAtual ? empresaAtual.cnpj : undefined;
+  const anoInicio = $('#projecao-ano-inicio').value || '2026';
+  const anoFim = $('#projecao-ano-fim').value || '2033';
+
+  if (!cnpj && lancamentos.length === 0) {
+    container.innerHTML = '<div class="erro">Busque uma empresa por CNPJ na aba "Calcular Operação" (ou lance ao menos uma operação) antes de projetar.</div>';
+    return;
+  }
+
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Calculando projeção…</p>';
+  try {
+    const query = 'anoInicio=' + encodeURIComponent(anoInicio) + '&anoFim=' + encodeURIComponent(anoFim) + (cnpj ? '&cnpj=' + encodeURIComponent(cnpj) : '');
+    const projecao = await chamarApi('/apuracao/projecao?' + query);
+    renderizarProjecaoAnual(container, projecao);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#btn-apurar-icms-iss').addEventListener('click', async () => {
+  const container = $('#resultado-icms-iss');
+  const cnpj = empresaAtual ? empresaAtual.cnpj : undefined;
+  const anoInicio = $('#projecao-ano-inicio').value || '2026';
+  const anoFim = $('#projecao-ano-fim').value || '2033';
+
+  if (!cnpj && lancamentos.length === 0) {
+    container.innerHTML = '<div class="erro">Busque uma empresa por CNPJ na aba "Calcular Operação" (ou lance ao menos uma operação) antes de apurar.</div>';
+    return;
+  }
+
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Apurando…</p>';
+  try {
+    const query = 'anoInicio=' + encodeURIComponent(anoInicio) + '&anoFim=' + encodeURIComponent(anoFim) + (cnpj ? '&cnpj=' + encodeURIComponent(cnpj) : '');
+    const cargaTotal = await chamarApi('/apuracao/projecao-carga-total?' + query);
+    renderizarApuracaoIcmsIss(container, cargaTotal);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+function renderizarApuracaoIcmsIss(container, cargaTotal) {
+  const semNada = cargaTotal.every((c) =>
+    Number(c.icms.debito) === 0 && Number(c.icms.credito) === 0 && Number(c.iss.debito) === 0 && Number(c.iss.credito) === 0 &&
+    Number(c.pis.debito) === 0 && Number(c.pis.credito) === 0 && Number(c.cofins.debito) === 0 && Number(c.cofins.credito) === 0 &&
+    Number(c.ipi.debito) === 0 && Number(c.ipi.credito) === 0,
+  );
+  if (semNada) {
+    container.innerHTML = '<p style="font-size:13px;color:#6b7280">Nenhum tributo antigo (PIS/COFINS/ICMS/ISS/IPI) informado nos lançamentos desta empresa ainda — informe-os no lançamento manual (seção "Tributos do sistema atual") ou na importação de planilha.</p>';
+    return;
+  }
+
+  let html = '<table><thead><tr><th>Ano</th><th>Saldo ICMS</th><th>Saldo ISS</th><th>Saldo PIS</th><th>Saldo COFINS</th><th>Saldo IPI</th><th>Saldo IBS+CBS</th><th>CARGA TOTAL</th></tr></thead><tbody>';
+  for (const c of cargaTotal) {
+    html += '<tr><td><strong>' + c.ano + '</strong></td>' +
+            '<td>' + formatarMoeda(c.icms.saldo) + '</td>' +
+            '<td>' + formatarMoeda(c.iss.saldo) + '</td>' +
+            '<td>' + formatarMoeda(c.pis.saldo) + '</td>' +
+            '<td>' + formatarMoeda(c.cofins.saldo) + '</td>' +
+            '<td>' + formatarMoeda(c.ipi.saldo) + '</td>' +
+            '<td>' + formatarMoeda(c.saldoTotalIbsCbs) + '</td>' +
+            '<td><strong>' + formatarMoeda(c.saldoTotalGeral) + '</strong></td></tr>';
+  }
+  html += '</tbody></table>';
+  html += '<p style="font-size:12px;color:#6b7280;margin-top:8px">Aplica o cronograma de extinção/redução da reforma sobre o valor original de cada tributo informado — PIS/COFINS extintos em 2027; ICMS/ISS reduzidos gradualmente de 2029 a 2032, extintos em 2033; IPI zerado a partir de 2027 (exceto Zona Franca de Manaus).</p>';
+  container.innerHTML = html;
+}
+
+// ---------- exportação (Excel / PDF) ----------
+function montarQueryExportacao() {
+  const cnpj = empresaAtual ? empresaAtual.cnpj : undefined;
+  const nomeEmpresa = empresaAtual ? empresaAtual.razaoSocial : 'Sem empresa vinculada';
+  const anoInicio = $('#projecao-ano-inicio').value || '2026';
+  const anoFim = $('#projecao-ano-fim').value || '2033';
+  const params = new URLSearchParams({ anoInicio, anoFim, nomeEmpresa });
+  if (cnpj) params.set('cnpj', cnpj);
+  return params.toString();
+}
+
+function baixarArquivo(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+$('#btn-exportar-excel').addEventListener('click', () => {
+  const container = $('#resultado-exportacao');
+  if (!empresaAtual && lancamentos.length === 0) {
+    container.innerHTML = '<div class="erro">Busque uma empresa por CNPJ (ou lance ao menos uma operação) antes de exportar.</div>';
+    return;
+  }
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Gerando planilha…</p>';
+  baixarArquivo('/exportacao/excel?' + montarQueryExportacao());
+  setTimeout(() => { container.innerHTML = '<p style="font-size:13px;color:var(--verde)">Download da planilha iniciado.</p>'; }, 600);
+});
+
+$('#btn-exportar-pdf').addEventListener('click', () => {
+  const container = $('#resultado-exportacao');
+  if (!empresaAtual && lancamentos.length === 0) {
+    container.innerHTML = '<div class="erro">Busque uma empresa por CNPJ (ou lance ao menos uma operação) antes de exportar.</div>';
+    return;
+  }
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Gerando PDF…</p>';
+  baixarArquivo('/exportacao/pdf?' + montarQueryExportacao());
+  setTimeout(() => { container.innerHTML = '<p style="font-size:13px;color:var(--verde)">Download do PDF iniciado.</p>'; }, 600);
+});
+
+function renderizarProjecaoAnual(container, projecao) {
+  const semLancamentos = projecao.every((p) =>
+    Number(p.totalDebitoCbs) === 0 && Number(p.totalCreditoCbs) === 0 &&
+    Number(p.totalDebitoIbsEstadual) === 0 && Number(p.totalCreditoIbsEstadual) === 0 &&
+    Number(p.totalDebitoIbsMunicipal) === 0 && Number(p.totalCreditoIbsMunicipal) === 0,
+  );
+  if (semLancamentos) {
+    container.innerHTML = '<p style="font-size:13px;color:#6b7280">Nenhum lançamento encontrado para esta empresa ainda — calcule algumas operações na aba "Calcular Operação" primeiro.</p>';
+    return;
+  }
+
+  const tagSituacao = (situacao) => {
+    if (situacao === 'CREDOR') return '<span class="beneficio-tag" style="background:#eaf7ec;color:var(--verde)">Credor</span>';
+    if (situacao === 'DEVEDOR') return '<span class="beneficio-tag" style="background:#fdeaea;color:#b3261e">Devedor</span>';
+    return '<span class="beneficio-tag">Neutro</span>';
+  };
+
+  const maiorSaldoAbsoluto = Math.max(...projecao.map((p) => Math.abs(Number(p.saldoTotal))), 1);
+
+  let html = '<table><thead><tr><th>Ano</th><th>CBS</th><th>IBS Estadual</th><th>IBS Municipal</th><th>Saldo do ano</th><th>Situação</th></tr></thead><tbody>';
+  for (const p of projecao) {
+    const debitoTotal = Number(p.totalDebitoCbs) + Number(p.totalDebitoIbsEstadual) + Number(p.totalDebitoIbsMunicipal);
+    const creditoTotal = Number(p.totalCreditoCbs) + Number(p.totalCreditoIbsEstadual) + Number(p.totalCreditoIbsMunicipal);
+    html += '<tr><td><strong>' + p.ano + '</strong></td>' +
+            '<td>' + formatarMoeda(p.saldoCbs) + '</td>' +
+            '<td>' + formatarMoeda(p.saldoIbsEstadual) + '</td>' +
+            '<td>' + formatarMoeda(p.saldoIbsMunicipal) + '</td>' +
+            '<td><strong>' + formatarMoeda(Math.abs(Number(p.saldoTotal))) + '</strong></td>' +
+            '<td>' + tagSituacao(p.situacao) + '</td></tr>';
+    // linha auxiliar, menor, mostrando débito/crédito brutos que compõem o saldo acima
+    html += '<tr style="font-size:12px;color:#6b7280"><td></td><td colspan="3">Débito bruto: ' + formatarMoeda(debitoTotal) +
+            ' &nbsp;·&nbsp; Crédito bruto: ' + formatarMoeda(creditoTotal) + '</td><td colspan="2"></td></tr>';
+  }
+  html += '</tbody></table>';
+
+  html += '<h3>Comparativo visual (saldo do ano)</h3>';
+  for (const p of projecao) {
+    const largura = Math.round((Math.abs(Number(p.saldoTotal)) / maiorSaldoAbsoluto) * 100);
+    const cor = p.situacao === 'CREDOR' ? 'var(--verde)' : p.situacao === 'DEVEDOR' ? '#b3261e' : '#9ca3af';
+    html += '<div class="barra-linha"><div class="barra-label">' + p.ano + '</div>' +
+            '<div class="barra-fundo"><div class="barra-preenchida" style="width:' + largura + '%;background:' + cor + '"></div></div>' +
+            '<div class="barra-valor">' + formatarMoeda(Math.abs(Number(p.saldoTotal))) + ' (' + tagSituacao(p.situacao) + ')</div></div>';
+  }
+
+  const primeiro = projecao[0];
+  const ultimo = projecao[projecao.length - 1];
+  const diferenca = Number(ultimo.saldoTotal) - Number(primeiro.saldoTotal);
+  const percentual = Number(primeiro.saldoTotal) !== 0 ? ((diferenca / Math.abs(Number(primeiro.saldoTotal))) * 100).toFixed(1) : '—';
+  html += '<p style="margin-top:14px;font-size:13px;color:#6b7280">De ' + primeiro.ano + ' (' + tagSituacao(primeiro.situacao) + ') para ' +
+          ultimo.ano + ' (' + tagSituacao(ultimo.situacao) + '): saldo ' + (diferenca >= 0 ? 'subiu' : 'caiu') + ' ' + formatarMoeda(Math.abs(diferenca)) +
+          (percentual !== '—' ? ' (' + Math.abs(percentual) + '%)' : '') + '.</p>';
+
+  container.innerHTML = html;
+}
+
+// ---------- histórico ----------
+$('#form-historico').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const container = $('#resultado-historico');
+  const operacaoId = ev.target.operacaoId.value;
+  try {
+    const memorias = await chamarApi('/apuracao/historico/' + encodeURIComponent(operacaoId));
+    if (memorias.length === 0) {
+      container.innerHTML = '<div class="cartao">Nenhum registro encontrado para essa operação.</div>';
+      return;
+    }
+    let html = '<div class="cartao"><h2>Memória de cálculo — ' + operacaoId + '</h2>';
+    for (const m of memorias) {
+      html += '<div class="memoria-item"><div class="titulo">' + m.regraAplicada + '</div>' +
+              '<div>Base legal: ' + m.baseLegal + '</div>' +
+              '<div>Alíquota utilizada: ' + m.aliquotaUtilizada + '% · Base: ' + formatarMoeda(m.baseCalculo) + ' · Valor apurado: ' + formatarMoeda(m.valorApurado) + '</div></div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+// ---------- Alíquotas de referência configuráveis ----------
+async function carregarAliquotasAtuais() {
+  try {
+    const atuais = await chamarApi('/parametrizacao/aliquotas-plenas');
+    $('#config-aliquota-cbs').value = atuais.cbs;
+    $('#config-aliquota-ibs').value = atuais.ibs;
+  } catch (e) {
+    // silencioso — os campos ficam vazios, o usuário ainda pode preencher e salvar
+  }
+}
+carregarAliquotasAtuais();
+
+$('#btn-salvar-aliquotas').addEventListener('click', async () => {
+  const container = $('#resultado-aliquotas');
+  const cbs = $('#config-aliquota-cbs').value;
+  const ibs = $('#config-aliquota-ibs').value;
+  if (cbs === '' || ibs === '') {
+    container.innerHTML = '<div class="erro">Preencha os dois campos (CBS e IBS).</div>';
+    return;
+  }
+  try {
+    const novo = await chamarApi('/parametrizacao/aliquotas-plenas', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cbs, ibs }),
+    });
+    container.innerHTML = '<p style="font-size:13px;color:var(--verde)">Salvo — nova alíquota de referência: CBS ' + novo.cbs + '% + IBS ' + novo.ibs + '% (total ' + (Number(novo.cbs) + Number(novo.ibs)).toLocaleString('pt-BR') + '%). Já vale para novos cálculos, apuração e projeção.</p>';
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#btn-restaurar-aliquotas').addEventListener('click', async () => {
+  const container = $('#resultado-aliquotas');
+  try {
+    const padrao = await chamarApi('/parametrizacao/aliquotas-plenas/restaurar-padrao', { method: 'POST' });
+    $('#config-aliquota-cbs').value = padrao.cbs;
+    $('#config-aliquota-ibs').value = padrao.ibs;
+    container.innerHTML = '<p style="font-size:13px;color:var(--verde)">Restaurado para o padrão: CBS ' + padrao.cbs + '% + IBS ' + padrao.ibs + '%.</p>';
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+// ---------- Dashboard Fiscal (KPIs + gráficos + tabela detalhada, estilo do painel de referência) ----------
+let projecaoDashboardFiscal = null;
+let cargaTotalDashboardFiscal = null;
+
+$('#btn-dash-fiscal-carregar').addEventListener('click', async () => {
+  const container = $('#dash-fiscal-conteudo');
+  container.innerHTML = '<p style="font-size:13px;color:#6b7280">Carregando…</p>';
+  try {
+    const cnpj = empresaAtual ? empresaAtual.cnpj : undefined;
+    const query = 'anoInicio=2026&anoFim=2033' + (cnpj ? '&cnpj=' + encodeURIComponent(cnpj) : '');
+    const [projecao, cargaTotal] = await Promise.all([
+      chamarApi('/apuracao/projecao?' + query),
+      chamarApi('/apuracao/projecao-carga-total?' + query),
+    ]);
+    projecaoDashboardFiscal = projecao;
+    cargaTotalDashboardFiscal = cargaTotal;
+
+    if (!projecao || projecao.length === 0) {
+      container.innerHTML = '<p style="font-size:13px;color:#6b7280">Nenhum lançamento encontrado ainda — calcule algumas operações na aba "Calcular Operação" primeiro.</p>';
+      $('#dash-fiscal-seletor-wrapper').hidden = true;
+      return;
+    }
+
+    const seletor = $('#dash-fiscal-ano');
+    seletor.innerHTML = projecao.map((p) => '<option value="' + p.ano + '">' + p.ano + '</option>').join('');
+    seletor.value = String(projecao[projecao.length - 1].ano); // ano final da projeção, por padrão
+    $('#dash-fiscal-seletor-wrapper').hidden = false;
+    renderizarDashboardFiscal();
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#dash-fiscal-ano').addEventListener('change', renderizarDashboardFiscal);
+
+function renderizarDashboardFiscal() {
+  if (!projecaoDashboardFiscal || projecaoDashboardFiscal.length === 0) return;
+  const container = $('#dash-fiscal-conteudo');
+  const anoSelecionado = Number($('#dash-fiscal-ano').value);
+  const indice = projecaoDashboardFiscal.findIndex((p) => p.ano === anoSelecionado);
+  const atual = projecaoDashboardFiscal[indice];
+  const anterior = indice > 0 ? projecaoDashboardFiscal[indice - 1] : null;
+  const cargaAtual = cargaTotalDashboardFiscal ? cargaTotalDashboardFiscal.find((c) => c.ano === anoSelecionado) : null;
+
+  const corPorSinal = (v) => (v > 0 ? 'var(--vermelho)' : v < 0 ? 'var(--verde)' : '#374151');
+
+  let variacaoHtml = '';
+  const atualNum = Number(atual.saldoTotal);
+  if (anterior && Number(anterior.saldoTotal) !== 0) {
+    const anteriorNum = Number(anterior.saldoTotal);
+    const variacao = ((atualNum - anteriorNum) / Math.abs(anteriorNum)) * 100;
+    const seta = variacao >= 0 ? '▲' : '▼';
+    variacaoHtml = '<div class="kpi-variacao" style="color:' + (variacao >= 0 ? 'var(--vermelho)' : 'var(--verde)') + '">' + seta + ' ' + Math.abs(variacao).toFixed(1) + '% vs ano anterior</div>';
+  }
+
+  const kpi = (titulo, valor, extra) =>
+    '<div class="kpi-cartao"><div class="kpi-titulo">' + titulo + '</div>' +
+    '<div class="kpi-valor" style="color:' + corPorSinal(Number(valor)) + '">' + formatarMoeda(Math.abs(Number(valor))) + '</div>' +
+    (extra || '') + '</div>';
+
+  let html = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">';
+  html += kpi('Saldo Total', atual.saldoTotal, variacaoHtml);
+  html += kpi('Saldo CBS', atual.saldoCbs);
+  html += kpi('Saldo IBS Estadual', atual.saldoIbsEstadual);
+  html += kpi('Saldo IBS Municipal', atual.saldoIbsMunicipal);
+  if (cargaAtual) {
+    html += kpi('Saldo ICMS', cargaAtual.icms.saldo);
+    html += kpi('Saldo ISS', cargaAtual.iss.saldo);
+  }
+  html += '</div>';
+
+  const situacaoTexto = atual.situacao === 'DEVEDOR' ? 'Devedor' : atual.situacao === 'CREDOR' ? 'Credor' : 'Neutro';
+  const corSituacao = atual.situacao === 'DEVEDOR' ? 'var(--vermelho)' : atual.situacao === 'CREDOR' ? 'var(--verde)' : '#6b7280';
+  const mensagemSituacao = atual.situacao === 'CREDOR'
+    ? 'A empresa é credora de impostos em ' + atual.ano + '. Há saldo a recuperar.'
+    : atual.situacao === 'DEVEDOR'
+      ? 'A empresa é devedora de impostos em ' + atual.ano + '.'
+      : 'Saldo neutro em ' + atual.ano + '.';
+  html += '<div class="situacao-banner" style="color:' + corSituacao + '">Situação: ' + situacaoTexto +
+          '<div style="font-weight:400;font-size:12px;margin-top:2px">' + mensagemSituacao + '</div></div>';
+
+  html += graficoEvolucaoSaldoTotal(projecaoDashboardFiscal);
+  html += graficoMultiSerie('Débito vs Crédito CBS', projecaoDashboardFiscal,
+    [{ nome: 'Débito CBS', campo: 'totalDebitoCbs', cor: 'var(--vermelho)' }, { nome: 'Crédito CBS', campo: 'totalCreditoCbs', cor: 'var(--verde)' }]);
+  html += graficoMultiSerie('Composição do saldo por tributo', projecaoDashboardFiscal,
+    [{ nome: 'Saldo CBS', campo: 'saldoCbs', cor: 'var(--azul)' }, { nome: 'Saldo IBS Est.', campo: 'saldoIbsEstadual', cor: 'var(--azul-escuro)' }, { nome: 'Saldo IBS Mun.', campo: 'saldoIbsMunicipal', cor: '#6b46c1' }], true);
+  html += graficoMultiSerie('Débito vs Crédito IBS Estadual', projecaoDashboardFiscal,
+    [{ nome: 'Débito IBS Est.', campo: 'totalDebitoIbsEstadual', cor: 'var(--vermelho)' }, { nome: 'Crédito IBS Est.', campo: 'totalCreditoIbsEstadual', cor: 'var(--verde)' }]);
+
+  if (cargaTotalDashboardFiscal) {
+    const projecaoComIcmsIss = cargaTotalDashboardFiscal.map((c) => ({ ano: c.ano, saldoIcms: c.icms.saldo, saldoIss: c.iss.saldo }));
+    html += graficoMultiSerie('Composição ICMS/ISS por ano', projecaoComIcmsIss,
+      [{ nome: 'Saldo ICMS', campo: 'saldoIcms', cor: '#b3261e' }, { nome: 'Saldo ISS', campo: 'saldoIss', cor: '#d97706' }], true);
+  }
+
+  html += tabelaDetalhadaApuracao(projecaoDashboardFiscal, cargaTotalDashboardFiscal);
+
+  container.innerHTML = html;
+}
+
+function graficoEvolucaoSaldoTotal(projecao) {
+  const maior = Math.max(...projecao.map((p) => Math.abs(Number(p.saldoTotal))), 1);
+  let html = '<h3>Evolução do saldo total</h3>';
+  for (const p of projecao) {
+    const largura = Math.round((Math.abs(Number(p.saldoTotal)) / maior) * 100);
+    const cor = p.situacao === 'DEVEDOR' ? 'var(--vermelho)' : p.situacao === 'CREDOR' ? 'var(--verde)' : '#9ca3af';
+    html += '<div class="barra-linha"><div class="barra-label" style="width:50px">' + p.ano + '</div>' +
+            '<div class="barra-fundo"><div class="barra-preenchida" style="width:' + largura + '%;background:' + cor + '"></div></div>' +
+            '<div class="barra-valor">' + formatarMoeda(Math.abs(Number(p.saldoTotal))) + '</div></div>';
+  }
+  return html;
+}
+
+/** Desenha, para cada ano, uma pilha de mini-barras (uma por série) — usado tanto para pares Débito/Crédito quanto para a composição de 3 saldos. */
+function graficoMultiSerie(titulo, projecao, series, valorPodeSerNegativo) {
+  const todosOsValores = projecao.flatMap((p) => series.map((s) => Number(p[s.campo])));
+  const maior = Math.max(...todosOsValores.map((v) => Math.abs(v)), 1);
+
+  const legenda = series.map((s) => '<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:11px"><span style="width:10px;height:10px;border-radius:2px;background:' + s.cor + ';display:inline-block"></span>' + s.nome + '</span>').join('');
+
+  let html = '<h3>' + titulo + '</h3><div style="margin-bottom:8px">' + legenda + '</div>';
+  for (const p of projecao) {
+    html += '<div class="mini-barra-grupo"><div class="mini-barra-label">' + p.ano + '</div><div class="mini-barra-pilha">';
+    for (const s of series) {
+      const valor = Number(p[s.campo]);
+      const largura = Math.max(Math.round((Math.abs(valor) / maior) * 100), valor === 0 ? 0 : 2);
+      html += '<div class="mini-barra-fundo"><div class="mini-barra-preenchida" style="width:' + largura + '%;background:' + s.cor + '"></div></div>';
+    }
+    html += '</div><div style="width:110px;text-align:right;font-size:11px">' +
+            series.map((s) => (valorPodeSerNegativo ? formatarMoeda(p[s.campo]) : formatarMoeda(Math.abs(Number(p[s.campo])))) + '<br>').join('') +
+            '</div></div>';
+  }
+  return html;
+}
+
+function tabelaDetalhadaApuracao(projecao, cargaTotal) {
+  let html = '<h3>Tabela detalhada de apuração</h3>';
+  html += '<div style="overflow-x:auto"><table style="margin-top:0"><thead><tr>' +
+          '<th>Ano</th><th>Débito CBS</th><th>Crédito CBS</th><th>Saldo CBS</th><th>Saldo IBS Est.</th><th>Saldo IBS Mun.</th>' +
+          (cargaTotal ? '<th>Saldo ICMS</th><th>Saldo ISS</th>' : '') +
+          '<th>Saldo Total</th><th>Situação</th>' +
+          '</tr></thead><tbody>';
+  for (const p of projecao) {
+    const corSituacao = p.situacao === 'DEVEDOR' ? 'var(--vermelho)' : p.situacao === 'CREDOR' ? 'var(--verde)' : '#6b7280';
+    const situacaoTexto = p.situacao === 'DEVEDOR' ? 'Devedor' : p.situacao === 'CREDOR' ? 'Credor' : 'Neutro';
+    const cargaDoAno = cargaTotal ? cargaTotal.find((c) => c.ano === p.ano) : null;
+    html += '<tr><td><strong>' + p.ano + '</strong></td>' +
+            '<td>' + formatarMoeda(p.totalDebitoCbs) + '</td>' +
+            '<td>' + formatarMoeda(p.totalCreditoCbs) + '</td>' +
+            '<td>' + formatarMoeda(p.saldoCbs) + '</td>' +
+            '<td>' + formatarMoeda(p.saldoIbsEstadual) + '</td>' +
+            '<td>' + formatarMoeda(p.saldoIbsMunicipal) + '</td>' +
+            (cargaDoAno ? '<td>' + formatarMoeda(cargaDoAno.icms.saldo) + '</td><td>' + formatarMoeda(cargaDoAno.iss.saldo) + '</td>' : (cargaTotal ? '<td>—</td><td>—</td>' : '')) +
+            '<td><strong>' + formatarMoeda(Math.abs(Number(p.saldoTotal))) + '</strong></td>' +
+            '<td style="color:' + corSituacao + ';font-weight:600">' + situacaoTexto + '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+// ---------- dashboard ----------
+function renderizarBarras(container, payload, cor, mensagemVazia, formatarValor) {
+  if (!payload.labels || payload.labels.length === 0) {
+    container.innerHTML = '<p style="font-size:13px;color:#6b7280">' + (mensagemVazia || 'Nenhum dado ainda — calcule algumas operações primeiro.') + '</p>';
+    return;
+  }
+  const max = Math.max(...payload.data, 1);
+  const exibir = formatarValor || ((v) => v);
+  let html = '';
+  payload.labels.forEach((label, i) => {
+    const largura = Math.round((payload.data[i] / max) * 100);
+    html += '<div class="barra-linha"><div class="barra-label">' + label + '</div>' +
+            '<div class="barra-fundo"><div class="barra-preenchida" style="width:' + largura + '%;background:' + cor + '"></div></div>' +
+            '<div class="barra-valor">' + exibir(payload.data[i]) + '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+$('#btn-dash-simples-nacional').addEventListener('click', async () => {
+  const container = $('#grafico-simples-nacional');
+  try {
+    const cnpj = empresaAtual ? empresaAtual.cnpj : undefined;
+    const query = cnpj ? '?cnpj=' + encodeURIComponent(cnpj) : '';
+    const payload = await chamarApi('/dashboard/comparativo-simples-nacional' + query);
+    renderizarBarras(container, payload, '#6b46c1',
+      'Nenhum lançamento de entrada (compra/importação) com o regime da contraparte informado ainda.',
+      (v) => v.toLocaleString('pt-BR') + '%');
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#btn-dash-economia').addEventListener('click', async () => {
+  const container = $('#grafico-economia');
+  try {
+    const payload = await chamarApi('/dashboard/economia-por-beneficio');
+    renderizarBarras(container, payload, '#1e7e34',
+      'Nenhuma economia calculada ainda — precisa de operações com benefício fiscal E com ano definido ' +
+      '(lançamentos feitos antes desta atualização não têm o ano guardado; recalcule-os para aparecerem aqui).',
+      formatarMoeda);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#btn-dash-total-tributo').addEventListener('click', async () => {
+  const container = $('#grafico-total-tributo');
+  try {
+    const payload = await chamarApi('/dashboard/total-por-tributo');
+    renderizarBarras(container, payload, '#1a4d8f', undefined, formatarMoeda);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#btn-dash-evolucao').addEventListener('click', async () => {
+  const container = $('#grafico-evolucao');
+  try {
+    const payload = await chamarApi('/dashboard/evolucao-anual');
+    renderizarBarras(container, payload, '#6b46c1',
+      'Nenhum dado com ano definido ainda — lançamentos feitos antes desta atualização não têm o ano ' +
+      'guardado; recalcule-os para aparecerem aqui.',
+      formatarMoeda);
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#btn-dash-beneficios').addEventListener('click', async () => {
+  const container = $('#grafico-beneficios');
+  try {
+    const payload = await chamarApi('/dashboard/beneficios-aplicados');
+    renderizarBarras(container, payload, '#1a4d8f',
+      'Nenhuma das operações calculadas até agora usou um benefício fiscal — isso não é erro, ' +
+      'é porque os produtos/NCMs calculados não têm benefício aplicável. Calcule uma operação ' +
+      'com um NCM beneficiado (ex: 0407.21.00, ovos — alíquota zero) para ver este gráfico preenchido.');
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+
+$('#btn-dash-regimes').addEventListener('click', async () => {
+  const container = $('#grafico-regimes');
+  try {
+    const payload = await chamarApi('/dashboard/indicadores-por-regime');
+    renderizarBarras(container, payload, '#1e7e34');
+  } catch (e) {
+    mostrarErro(container, e.message);
+  }
+});
+</script>
+
+</body>
+</html>
