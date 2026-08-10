@@ -34,4 +34,10 @@ function normalizarChave(chaveBruta) {
   return (chaveBruta ?? '').trim().toUpperCase();
 }
 
-module.exports = { validarFormatoEChecksumDaChave, normalizarChave };
+function gerarChaveAtivacao() {
+  const payload = Array.from({ length: 15 }, () => ALFABETO[crypto.randomInt(ALFABETO.length)]).join('');
+  const checksum = hmacParaAlfabeto(payload, 5);
+  return `${payload.slice(0, 5)}-${payload.slice(5, 10)}-${payload.slice(10, 15)}-${checksum}`;
+}
+
+module.exports = { validarFormatoEChecksumDaChave, normalizarChave, gerarChaveAtivacao };
