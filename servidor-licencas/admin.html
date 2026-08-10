@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Tax Engine — Painel de Licenças</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f5f6f8; margin: 0; padding: 24px; color: #1f2430; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+  .cartao { background: #fff; border: 1px solid #e2e5ea; border-radius: 8px; padding: 18px; margin-bottom: 18px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 4px; }
+  input, select { width: 100%; padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 5px; font-size: 13px; margin-bottom: 10px; }
+  .linha { display: flex; gap: 10px; flex-wrap: wrap; }
+  .linha > div { flex: 1; min-width: 160px; }
+  button { background: #1a4d8f; color: #fff; border: none; border-radius: 5px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  button:hover { background: #163f75; }
+  button.secundario { background: #fff; color: #1a4d8f; border: 1px solid #1a4d8f; }
+  button.perigo { background: #b3261e; }
+  button.perigo:hover { background: #8f1e18; }
+  button.pequeno { padding: 4px 8px; font-size: 12px; margin-right: 4px; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+  th { color: #6b7280; font-weight: 600; }
+  .tag { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .tag-ativa { background: #eaf7ec; color: #1e7e34; }
+  .tag-bloqueada { background: #fdecea; color: #b3261e; }
+  .tag-nao-ativada { background: #f3f4f6; color: #6b7280; }
+  .tag-expirada { background: #fff4e5; color: #b45309; }
+  .erro { background: #fdecea; border: 1px solid #f5c6cb; color: #b3261e; padding: 8px 12px; border-radius: 5px; font-size: 13px; }
+  .sucesso { background: #eaf7ec; border: 1px solid #c3e6cb; color: #1e7e34; padding: 8px 12px; border-radius: 5px; font-size: 13px; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  #tela-login { max-width: 380px; margin: 80px auto; }
+</style>
+</head>
+<body>
+
+<div id="tela-login">
+  <div class="cartao">
+    <h1>Painel de Licenças</h1>
+    <p class="sub">Tax Engine IBS/CBS/IS — acesso restrito</p>
+    <label>Senha do administrador (SEGREDO_ADMIN)</label>
+    <input id="campo-senha" type="password" />
+    <button id="btn-entrar" style="width:100%">Entrar</button>
+    <div id="login-resultado" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="tela-painel" style="display:none; max-width: 1000px; margin: 0 auto;">
+  <h1>Painel de Licenças</h1>
+  <p class="sub">Tax Engine IBS/CBS/IS</p>
+
+  <div class="cartao">
+    <h2 style="font-size:15px;margin-top:0">Gerar nova licença</h2>
+    <div class="linha">
+      <div>
+        <label>CNPJ ou CPF do cliente</label>
+        <input id="gerar-cnpj" placeholder="12.345.678/0001-90" />
+      </div>
+      <div>
+        <label>Validade (opcional)</label>
+        <input id="gerar-validade" type="date" />
+      </div>
+    </div>
+    <button id="btn-gerar">Gerar licença</button>
+    <div id="gerar-resultado" style="margin-top:10px"></div>
+  </div>
+
+  <div class="cartao">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2 style="font-size:15px;margin:0">Licenças</h2>
+      <button class="secundario" id="btn-atualizar">Atualizar lista</button>
+    </div>
+    <div id="lista-licencas" style="margin-top:12px;overflow-x:auto"></div>
+  </div>
+</div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+let segredoAdmin = '';
+
+async function chamarApi(caminho, opcoes) {
+  const resposta = await fetch(caminho, {
+    ...opcoes,
+    headers: { ...(opcoes?.headers || {}), Authorization: 'Bearer ' + segredoAdmin },
+  });
+  const corpo = await resposta.json();
+  if (!resposta.ok) throw new Error(corpo.mensagem || 'Erro ao chamar a API.');
+  return corpo;
+}
+
+$('#btn-entrar').addEventListener('click', async () => {
+  segredoAdmin = $('#campo-senha').value;
+  const container = $('#login-resultado');
+  try {
+    await chamarApi('/admin/licencas');
+    $('#tela-login').style.display = 'none';
+    $('#tela-painel').style.display = 'block';
+    carregarLicencas();
+  } catch (e) {
+    container.innerHTML = '<div class="erro">Senha incorreta.</div>';
+  }
+});
+
+$('#campo-senha').addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') $('#btn-entrar').click();
+});
+
+$('#btn-gerar').addEventListener('click', async () => {
+  const container = $('#gerar-resultado');
+  const cnpj = $('#gerar-cnpj').value;
+  const validade = $('#gerar-validade').value;
+  try {
+    const resultado = await chamarApi('/admin/licencas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cnpj, validade: validade || undefined }),
+    });
+    container.innerHTML = '<div class="sucesso">Licença gerada: <code>' + resultado.licenca.chave + '</code> — copie e envie ao cliente.</div>';
+    $('#gerar-cnpj').value = '';
+    $('#gerar-validade').value = '';
+    carregarLicencas();
+  } catch (e) {
+    container.innerHTML = '<div class="erro">' + e.message + '</div>';
+  }
+});
+
+$('#btn-atualizar').addEventListener('click', carregarLicencas);
+
+function situacaoLicenca(l) {
+  if (l.status === 'BLOQUEADA') return { texto: 'Bloqueada', classe: 'tag-bloqueada' };
+  if (l.validade && new Date(l.validade).getTime() < Date.now()) return { texto: 'Expirada', classe: 'tag-expirada' };
+  if (!l.fingerprint) return { texto: 'Não ativada', classe: 'tag-nao-ativada' };
+  return { texto: 'Ativa', classe: 'tag-ativa' };
+}
+
+async function carregarLicencas() {
+  const container = $('#lista-licencas');
+  container.innerHTML = '<p style="color:#6b7280;font-size:13px">Carregando…</p>';
+  try {
+    const licencas = await chamarApi('/admin/licencas');
+    if (licencas.length === 0) {
+      container.innerHTML = '<p style="color:#6b7280;font-size:13px">Nenhuma licença gerada ainda.</p>';
+      return;
+    }
+    let html = '<table><thead><tr><th>Chave</th><th>CNPJ/CPF</th><th>Situação</th><th>Máquina</th><th>Gerada em</th><th>Ativada em</th><th>Validade</th><th>Ações</th></tr></thead><tbody>';
+    for (const l of licencas) {
+      const s = situacaoLicenca(l);
+      html += '<tr>' +
+        '<td><code>' + l.chave + '</code></td>' +
+        '<td>' + (l.cnpj || '—') + '</td>' +
+        '<td><span class="tag ' + s.classe + '">' + s.texto + '</span></td>' +
+        '<td>' + (l.fingerprint ? l.fingerprint.slice(0, 12) + '…' : '—') + '</td>' +
+        '<td>' + (l.dataGeracao ? new Date(l.dataGeracao).toLocaleDateString('pt-BR') : '—') + '</td>' +
+        '<td>' + (l.dataAtivacao ? new Date(l.dataAtivacao).toLocaleDateString('pt-BR') : '—') + '</td>' +
+        '<td>' + (l.validade ? new Date(l.validade).toLocaleDateString('pt-BR') : 'sem prazo') + '</td>' +
+        '<td>' +
+          (l.fingerprint ? '<button class="pequeno secundario" data-acao="liberar" data-chave="' + l.chave + '">Liberar (troca de PC)</button>' : '') +
+          (l.status === 'BLOQUEADA'
+            ? '<button class="pequeno secundario" data-acao="desbloquear" data-chave="' + l.chave + '">Desbloquear</button>'
+            : '<button class="pequeno perigo" data-acao="bloquear" data-chave="' + l.chave + '">Bloquear</button>') +
+        '</td>' +
+        '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+    container.querySelectorAll('button[data-acao]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const chave = btn.dataset.chave;
+        const acao = btn.dataset.acao;
+        if (acao === 'bloquear' && !confirm('Bloquear a licença ' + chave + '? O cliente perde o acesso até você desbloquear.')) return;
+        if (acao === 'liberar' && !confirm('Liberar a licença ' + chave + ' para uma nova máquina? A vinculação atual será removida.')) return;
+        try {
+          await chamarApi('/admin/licencas/' + encodeURIComponent(chave) + '/' + acao, { method: 'POST' });
+          carregarLicencas();
+        } catch (e) {
+          alert(e.message);
+        }
+      });
+    });
+  } catch (e) {
+    container.innerHTML = '<div class="erro">' + e.message + '</div>';
+  }
+}
+</script>
+</body>
+</html>
