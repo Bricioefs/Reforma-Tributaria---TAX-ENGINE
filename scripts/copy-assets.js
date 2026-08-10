@@ -19,3 +19,4 @@ console.log('Pasta public copiada para dist/public');
 
 copiarDiretorio(path.join(__dirname, '..', 'src', 'assets'), path.join(__dirname, '..', 'dist', 'assets'));
 console.log('Pasta assets copiada para dist/assets');
+ 
