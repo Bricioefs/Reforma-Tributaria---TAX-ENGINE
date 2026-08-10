@@ -77,14 +77,50 @@
 
 <script>
 const $ = (sel) => document.querySelector(sel);
+
+if (window.location.protocol === 'file:') {
+  // Detecta na hora, sem esperar o usuário tentar logar e ver um erro
+  // confuso — abrir este arquivo direto do disco (Arquivo > Abrir, ou
+  // clicar duas vezes) nunca funciona, porque a página busca os dados
+  // em caminhos relativos (ex: "/admin/licencas") que só existem de
+  // verdade quando servidos pelo PRÓPRIO servidor (node servidor.js).
+  document.addEventListener('DOMContentLoaded', () => {
+    const aviso = document.createElement('div');
+    aviso.style.cssText = 'background:#fdecea;border-bottom:2px solid #b3261e;color:#b3261e;padding:12px 20px;font-size:13px;text-align:center';
+    aviso.innerHTML = '<strong>Este arquivo foi aberto direto do computador (endereço começando com "file://") — não vai funcionar assim.</strong> ' +
+      'Rode "node servidor.js" (nesta mesma pasta) e acesse pelo navegador em <code>http://localhost:4000/admin</code> (ou a URL de onde você hospedou o servidor) — veja o README.md desta pasta.';
+    document.body.prepend(aviso);
+  });
+}
+
 let segredoAdmin = '';
 
 async function chamarApi(caminho, opcoes) {
-  const resposta = await fetch(caminho, {
-    ...opcoes,
-    headers: { ...(opcoes?.headers || {}), Authorization: 'Bearer ' + segredoAdmin },
-  });
-  const corpo = await resposta.json();
+  let resposta;
+  try {
+    resposta = await fetch(caminho, {
+      ...opcoes,
+      headers: { ...(opcoes?.headers || {}), Authorization: 'Bearer ' + segredoAdmin },
+    });
+  } catch (erroDeRede) {
+    // Acontece, por exemplo, ao abrir este arquivo direto do disco
+    // (file:///...admin.html) em vez de acessá-lo através do servidor
+    // rodando (http://localhost:4000/admin ou a URL onde você hospedou) —
+    // o fetch pra "/admin/licencas" nunca chega em lugar nenhum de
+    // verdade, e SEM essa distinção, isso aparecia enganosamente como
+    // "Senha incorreta" mesmo quando a senha estava certa.
+    const erro = new Error('Não foi possível conectar ao servidor de licenças.');
+    erro.erroDeConexao = true;
+    throw erro;
+  }
+  let corpo;
+  try {
+    corpo = await resposta.json();
+  } catch {
+    const erro = new Error('O servidor respondeu, mas não com os dados esperados — confira se a URL aponta pro servidor de licenças certo.');
+    erro.erroDeConexao = true;
+    throw erro;
+  }
   if (!resposta.ok) throw new Error(corpo.mensagem || 'Erro ao chamar a API.');
   return corpo;
 }
@@ -98,7 +134,11 @@ $('#btn-entrar').addEventListener('click', async () => {
     $('#tela-painel').style.display = 'block';
     carregarLicencas();
   } catch (e) {
-    container.innerHTML = '<div class="erro">Senha incorreta.</div>';
+    if (e.erroDeConexao) {
+      container.innerHTML = '<div class="erro">' + e.message + ' Este painel precisa ser aberto ATRAVÉS do servidor rodando (ex: http://localhost:4000/admin), não abrindo o arquivo admin.html diretamente do computador — confira se "node servidor.js" está rodando e se você está acessando pela URL http://, não por "Arquivo" (file://). Veja o README.md desta pasta.</div>';
+    } else {
+      container.innerHTML = '<div class="erro">Senha incorreta.</div>';
+    }
   }
 });
 

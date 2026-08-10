@@ -1,0 +1,13 @@
+{
+  "name": "tax-engine-servidor-licencas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Servidor de licenças e atualizações do Tax Engine IBS/CBS/IS — zero dependências externas, só módulos nativos do Node.",
+  "main": "servidor.js",
+  "scripts": {
+    "start": "node servidor.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
