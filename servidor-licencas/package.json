@@ -5,6 +5,7 @@
   "description": "Servidor de licenças e atualizações do Tax Engine IBS/CBS/IS — zero dependências externas, só módulos nativos do Node.",
   "main": "servidor.js",
   "scripts": {
+    "build": "echo 'Nada para compilar — servidor sem dependências, pronto para rodar.'",
     "start": "node servidor.js"
   },
   "engines": {
