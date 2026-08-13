@@ -19,8 +19,10 @@
  *      validar em qualquer máquina até ser desbloqueada.
  *   6. Validade opcional por licença — expira automaticamente na data.
  *
- * Sem dependências externas — só módulos nativos do Node (`http`, `fs`,
- * `crypto`) — hospedar é só `node servidor.js`, sem "npm install".
+ * Armazenamento: arquivo local por padrão (zero configuração), ou
+ * PostgreSQL de verdade se `DATABASE_URL` estiver definida — ver
+ * `armazenamento.js` e o README.md ("MUITO IMPORTANTE") para quando isso
+ * importa (hospedagem com disco efêmero, como o plano grátis do Render).
  *
  * Endpoints PÚBLICOS (o app cliente usa):
  *   POST /ativar   { chave, fingerprint }  → ativa OU confirma revalidação
@@ -36,32 +38,23 @@
  *   POST   /admin/licencas/:chave/validade  { validade }  → "" remove a validade (licença sem prazo)
  *   POST   /admin/definir-versao            { versao, notas?, urlDownload? }
  *
- * Configuração via variáveis de ambiente (opcionais, têm padrão):
+ * Configuração via variáveis de ambiente (todas opcionais, têm padrão):
  *   PORT             — porta HTTP (padrão 4000)
  *   SEGREDO_ADMIN    — senha do painel e dos endpoints /admin/* (padrão "troque-isto")
+ *   DATABASE_URL     — string de conexão PostgreSQL (ex: postgres://usuario:senha@host:5432/banco).
+ *                       Sem ela, usa arquivo local (comportamento de sempre).
  */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { validarFormatoEChecksumDaChave, normalizarChave, gerarChaveAtivacao } = require('./algoritmo-chave');
+const armazenamento = require('./armazenamento');
 
 const PORTA = process.env.PORT || 4000;
-const SEGREDO_ADMIN = process.env.SEGREDO_ADMIN || 'troque-isto';
-const ARQUIVO_LICENCAS = path.join(__dirname, 'dados', 'licencas.json');
-const ARQUIVO_VERSAO = path.join(__dirname, 'versao-atual.json');
-
-function lerJson(caminho, padrao) {
-  try {
-    return JSON.parse(fs.readFileSync(caminho, 'utf-8'));
-  } catch {
-    return padrao;
-  }
-}
-
-function escreverJson(caminho, dados) {
-  fs.mkdirSync(path.dirname(caminho), { recursive: true });
-  fs.writeFileSync(caminho, JSON.stringify(dados, null, 2), 'utf-8');
-}
+// .trim() nos dois lados — evita um mismatch silencioso se um espaço ou
+// quebra de linha grudar sem querer ao colar a senha no campo de
+// variável de ambiente (comum em algumas plataformas de hospedagem).
+const SEGREDO_ADMIN = (process.env.SEGREDO_ADMIN || 'troque-isto').trim();
 
 function lerCorpo(req) {
   return new Promise((resolve, reject) => {
@@ -81,24 +74,23 @@ function responderJson(res, status, corpo) {
 }
 
 function autorizado(req) {
-  return (req.headers['authorization'] || '') === `Bearer ${SEGREDO_ADMIN}`;
+  return (req.headers['authorization'] || '').trim() === `Bearer ${SEGREDO_ADMIN}`;
 }
 
 /**
- * Registro de licenças: { "AAAAA-BBBBB-CCCCC-DDDDD": { cnpj, fingerprint,
- * status, dataGeracao, dataAtivacao, ultimaVerificacao, validade } }
- * `fingerprint` fica `null` até a primeira ativação. `status` é "ATIVA"
- * ou "BLOQUEADA". `validade` é uma data ISO ou `null` (sem prazo).
+ * Registro de uma licença: { cnpj, fingerprint, status, dataGeracao,
+ * dataAtivacao, ultimaVerificacao, validade }. `fingerprint` fica `null`
+ * até a primeira ativação. `status` é "ATIVA" ou "BLOQUEADA". `validade`
+ * é uma data ISO ou `null` (sem prazo).
  */
-function ativar(chaveBruta, fingerprint) {
+async function ativar(chaveBruta, fingerprint) {
   const chave = normalizarChave(chaveBruta);
 
   if (!fingerprint || typeof fingerprint !== 'string') {
     return { sucesso: false, mensagem: 'Identificação da máquina ausente.' };
   }
 
-  const registro = lerJson(ARQUIVO_LICENCAS, {});
-  const licenca = registro[chave];
+  const licenca = await armazenamento.obterLicenca(chave);
 
   if (!licenca) {
     return { sucesso: false, mensagem: 'Licença não reconhecida — confira a chave, ou solicite ao fornecedor uma licença gerada para você.' };
@@ -116,27 +108,26 @@ function ativar(chaveBruta, fingerprint) {
     licenca.fingerprint = fingerprint;
     licenca.dataAtivacao = new Date().toISOString();
     licenca.ultimaVerificacao = new Date().toISOString();
-    escreverJson(ARQUIVO_LICENCAS, registro);
+    await armazenamento.salvarLicenca(chave, licenca);
     return { sucesso: true, mensagem: 'Ativado com sucesso.' };
   }
 
   if (licenca.fingerprint === fingerprint) {
     licenca.ultimaVerificacao = new Date().toISOString();
-    escreverJson(ARQUIVO_LICENCAS, registro);
+    await armazenamento.salvarLicenca(chave, licenca);
     return { sucesso: true, mensagem: 'Ativação confirmada.' };
   }
 
   return { sucesso: false, mensagem: 'Licença já utilizada em outro equipamento. Solicite ao fornecedor a liberação ou uma nova licença.' };
 }
 
-function gerarLicenca(cnpj, validade) {
+async function gerarLicenca(cnpj, validade) {
   let chave;
-  const registro = lerJson(ARQUIVO_LICENCAS, {});
   do {
     chave = gerarChaveAtivacao();
-  } while (registro[chave]);
+  } while (await armazenamento.obterLicenca(chave));
 
-  registro[chave] = {
+  const dados = {
     cnpj: (cnpj || '').trim() || null,
     fingerprint: null,
     status: 'ATIVA',
@@ -145,8 +136,8 @@ function gerarLicenca(cnpj, validade) {
     ultimaVerificacao: null,
     validade: validade || null,
   };
-  escreverJson(ARQUIVO_LICENCAS, registro);
-  return { chave, ...registro[chave] };
+  await armazenamento.salvarLicenca(chave, dados);
+  return { chave, ...dados };
 }
 
 function paginaAdmin() {
@@ -164,7 +155,7 @@ const servidor = http.createServer(async (req, res) => {
 
   try {
     if (url.pathname === '/' && req.method === 'GET') {
-      return responderJson(res, 200, { servico: 'Tax Engine — servidor de licenças', status: 'no ar' });
+      return responderJson(res, 200, { servico: 'Tax Engine — servidor de licenças', status: 'no ar', armazenamento: armazenamento.usandoBancoDeDados ? 'banco de dados' : 'arquivo local' });
     }
 
     if (url.pathname === '/admin' && req.method === 'GET') {
@@ -174,12 +165,12 @@ const servidor = http.createServer(async (req, res) => {
 
     if (url.pathname === '/ativar' && req.method === 'POST') {
       const corpo = await lerCorpo(req);
-      const resultado = ativar(corpo.chave, corpo.fingerprint);
+      const resultado = await ativar(corpo.chave, corpo.fingerprint);
       return responderJson(res, resultado.sucesso ? 200 : 403, resultado);
     }
 
     if (url.pathname === '/versao' && req.method === 'GET') {
-      const versao = lerJson(ARQUIVO_VERSAO, { versao: '0.0.0', notas: '', urlDownload: '', dataLancamento: null });
+      const versao = await armazenamento.obterVersao();
       return responderJson(res, 200, versao);
     }
 
@@ -189,7 +180,7 @@ const servidor = http.createServer(async (req, res) => {
       }
 
       if (partes.length === 2 && partes[1] === 'licencas' && req.method === 'GET') {
-        const registro = lerJson(ARQUIVO_LICENCAS, {});
+        const registro = await armazenamento.listarLicencas();
         const lista = Object.entries(registro).map(([chave, dados]) => ({ chave, ...dados }));
         lista.sort((a, b) => (b.dataGeracao || '').localeCompare(a.dataGeracao || ''));
         return responderJson(res, 200, lista);
@@ -197,15 +188,14 @@ const servidor = http.createServer(async (req, res) => {
 
       if (partes.length === 2 && partes[1] === 'licencas' && req.method === 'POST') {
         const corpo = await lerCorpo(req);
-        const nova = gerarLicenca(corpo.cnpj, corpo.validade);
+        const nova = await gerarLicenca(corpo.cnpj, corpo.validade);
         return responderJson(res, 200, { sucesso: true, licenca: nova });
       }
 
       if (partes.length === 4 && partes[1] === 'licencas' && req.method === 'POST') {
         const chave = normalizarChave(decodeURIComponent(partes[2]));
         const acao = partes[3];
-        const registro = lerJson(ARQUIVO_LICENCAS, {});
-        const licenca = registro[chave];
+        const licenca = await armazenamento.obterLicenca(chave);
         if (!licenca) return responderJson(res, 404, { sucesso: false, mensagem: 'Licença não encontrada.' });
 
         if (acao === 'liberar') {
@@ -222,7 +212,7 @@ const servidor = http.createServer(async (req, res) => {
           return responderJson(res, 404, { sucesso: false, mensagem: 'Ação não reconhecida.' });
         }
 
-        escreverJson(ARQUIVO_LICENCAS, registro);
+        await armazenamento.salvarLicenca(chave, licenca);
         return responderJson(res, 200, { sucesso: true, licenca: { chave, ...licenca } });
       }
 
@@ -230,7 +220,7 @@ const servidor = http.createServer(async (req, res) => {
         const corpo = await lerCorpo(req);
         if (!corpo.versao) return responderJson(res, 400, { sucesso: false, mensagem: 'Informe ao menos o campo "versao".' });
         const novaVersao = { versao: corpo.versao, notas: corpo.notas || '', urlDownload: corpo.urlDownload || '', dataLancamento: new Date().toISOString() };
-        escreverJson(ARQUIVO_VERSAO, novaVersao);
+        await armazenamento.salvarVersao(novaVersao);
         return responderJson(res, 200, { sucesso: true, versaoPublicada: novaVersao });
       }
     }
@@ -241,8 +231,35 @@ const servidor = http.createServer(async (req, res) => {
   }
 });
 
-servidor.listen(PORTA, () => {
-  console.log(`Servidor de licenças no ar em http://localhost:${PORTA}`);
-  console.log(`Painel administrativo em http://localhost:${PORTA}/admin`);
-  console.log(`SEGREDO_ADMIN=${SEGREDO_ADMIN === 'troque-isto' ? '"troque-isto" (PADRÃO — troque antes de expor publicamente!)' : '(customizado)'}`);
+async function iniciar() {
+  await armazenamento.inicializar();
+
+  servidor.listen(PORTA, async () => {
+    console.log(`Servidor de licenças no ar em http://localhost:${PORTA}`);
+    console.log(`Painel administrativo em http://localhost:${PORTA}/admin`);
+    console.log(`SEGREDO_ADMIN=${SEGREDO_ADMIN === 'troque-isto' ? '"troque-isto" (PADRÃO — troque antes de expor publicamente!)' : '(customizado)'}`);
+    console.log(`Armazenamento: ${armazenamento.usandoBancoDeDados ? 'PostgreSQL (DATABASE_URL configurada)' : 'arquivo local (dados/licencas.json)'}`);
+
+    // Aviso visível a CADA reinício — ajuda a perceber na hora se o
+    // plano grátis do Render (ou qualquer hospedagem sem disco
+    // persistente) apagou as licenças já geradas: se o arquivo/banco
+    // vier vazio logo depois de já ter tido licenças cadastradas, é bem
+    // provável que seja isso, não um bug. Ver "MUITO IMPORTANTE" no
+    // README.md desta pasta. Com `DATABASE_URL` configurada, este risco
+    // não existe mais — o aviso só faz sentido no modo arquivo.
+    const registroAtual = await armazenamento.listarLicencas();
+    const totalLicencas = Object.keys(registroAtual).length;
+    console.log(`Licenças carregadas neste início: ${totalLicencas}`);
+    if (totalLicencas === 0 && !armazenamento.usandoBancoDeDados) {
+      console.log('AVISO: nenhuma licença encontrada no arquivo local. Se você já tinha gerado licenças antes, ' +
+        'e está hospedando no plano GRÁTIS do Render (ou outra hospedagem sem disco persistente), ' +
+        'é bem provável que os dados tenham sido apagados no último reinício/spin-down — configure ' +
+        'DATABASE_URL para resolver de vez (ver "MUITO IMPORTANTE" no README.md).');
+    }
+  });
+}
+
+iniciar().catch((erro) => {
+  console.error('Erro ao iniciar o servidor:', erro);
+  process.exit(1);
 });

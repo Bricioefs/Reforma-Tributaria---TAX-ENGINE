@@ -2,13 +2,16 @@
   "name": "tax-engine-servidor-licencas",
   "version": "1.0.0",
   "private": true,
-  "description": "Servidor de licenças e atualizações do Tax Engine IBS/CBS/IS — zero dependências externas, só módulos nativos do Node.",
+  "description": "Servidor de licenças e atualizações do Tax Engine IBS/CBS/IS — funciona com arquivo local por padrão (zero configuração), ou PostgreSQL de verdade se DATABASE_URL estiver definida (recomendado para hospedagem com disco efêmero, como o plano grátis do Render).",
   "main": "servidor.js",
   "scripts": {
-    "build": "echo 'Nada para compilar — servidor sem dependências, pronto para rodar.'",
+    "build": "echo 'Nada para compilar — só precisa do npm install (traz o driver do Postgres).'",
     "start": "node servidor.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
   }
 }

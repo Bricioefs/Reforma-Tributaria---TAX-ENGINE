@@ -126,7 +126,7 @@ async function chamarApi(caminho, opcoes) {
 }
 
 $('#btn-entrar').addEventListener('click', async () => {
-  segredoAdmin = $('#campo-senha').value;
+  segredoAdmin = $('#campo-senha').value.trim();
   const container = $('#login-resultado');
   try {
     await chamarApi('/admin/licencas');
